@@ -337,24 +337,115 @@
     margin-top: 12px;
   }
 
+  #swipeScreen {
+    justify-content: center;
+    background:
+      radial-gradient(circle at center, rgba(0,255,255,.16), transparent 42%),
+      linear-gradient(180deg, rgba(16,5,39,.99), rgba(0,0,0,.99));
+  }
+
+  .swipeCard {
+    width: min(620px, 92%);
+    max-height: 92%;
+    overflow-y: auto;
+    padding: clamp(16px, 3vw, 28px);
+    border: 3px solid #ffcc33;
+    border-radius: 24px;
+    background: rgba(5,2,12,.9);
+    box-shadow:
+      0 0 18px rgba(255,204,51,.75),
+      0 0 38px rgba(115,39,255,.65),
+      inset 0 0 20px rgba(0,255,255,.12);
+  }
+
+  .swipeKicker {
+    color: #78fbff;
+    font-size: clamp(11px, 1.4vw, 14px);
+    font-weight: 1000;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+
+  .swipeTitle {
+    margin-top: 5px;
+    color: #ffcc33;
+    font-size: clamp(28px, 5vw, 48px);
+    font-weight: 1000;
+    line-height: 1;
+    letter-spacing: 2px;
+    text-shadow: 3px 3px 0 #7327ff, 0 0 14px rgba(255,204,51,.75);
+  }
+
+  .swipeGraphic {
+    position: relative;
+    width: min(310px, 78vw);
+    height: clamp(96px, 18vh, 130px);
+    margin: 14px auto 10px;
+    border: 3px solid #78fbff;
+    border-radius: 22px;
+    background:
+      linear-gradient(90deg, transparent 49.5%, rgba(120,251,255,.14) 50%, transparent 50.5%),
+      linear-gradient(0deg, transparent 49.5%, rgba(120,251,255,.14) 50%, transparent 50.5%),
+      rgba(20,10,44,.9);
+    box-shadow: 0 0 18px rgba(120,251,255,.48), inset 0 0 18px rgba(0,255,255,.1);
+    overflow: hidden;
+  }
+
+  .swipeArrow {
+    position: absolute;
+    color: #ffcc33;
+    font-size: 28px;
+    font-weight: 1000;
+    line-height: 1;
+    text-shadow: 0 0 10px rgba(255,204,51,.85);
+  }
+
+  .swipeArrow.up { top: 6px; left: 50%; transform: translateX(-50%); }
+  .swipeArrow.down { bottom: 6px; left: 50%; transform: translateX(-50%); }
+  .swipeArrow.left { left: 12px; top: 50%; transform: translateY(-50%); }
+  .swipeArrow.right { right: 12px; top: 50%; transform: translateY(-50%); }
+
+  .swipeFinger {
+    position: absolute;
+    left: 50%;
+    top: 52%;
+    z-index: 2;
+    font-size: clamp(34px, 6vw, 50px);
+    line-height: 1;
+    filter: drop-shadow(0 0 8px rgba(255,255,255,.7));
+    animation: swipeGuide 1.8s ease-in-out infinite;
+  }
+
+  @keyframes swipeGuide {
+    0%, 14%, 100% { transform: translate(-50%, -50%) rotate(12deg); opacity: .9; }
+    55%, 70% { transform: translate(48px, -50%) rotate(12deg); opacity: 1; }
+  }
+
+  .swipeCopy {
+    color: #eee7ff;
+    font-size: clamp(14px, 1.8vw, 18px);
+    line-height: 1.35;
+  }
+
+  .swipeCopy strong { color: #78fbff; }
+
+  #swipeScreen .bigBtn {
+    margin: 16px auto 0;
+  }
+
+  #swipeScreen .menuHint {
+    margin-top: 12px;
+  }
+
   #mobileControls {
     position: absolute;
     inset: auto 0 12px 0;
-    height: 108px;
+    height: 64px;
     z-index: 9;
     pointer-events: none;
   }
 
-  .dpad {
-    position: absolute;
-    left: 18px;
-    bottom: 0;
-    width: 108px;
-    height: 108px;
-    pointer-events: auto;
-  }
-
-  .dpad button, #pauseBtn {
+  #pauseBtn {
     position: absolute;
     border: 2px solid rgba(255,255,255,.72);
     background: rgba(10,8,28,.58);
@@ -363,17 +454,6 @@
     font-weight: 900;
     backdrop-filter: blur(3px);
   }
-
-  .dpad button {
-    width: 38px;
-    height: 38px;
-    font-size: 20px;
-  }
-
-  .up { left: 35px; top: 0; }
-  .down { left: 35px; bottom: 0; }
-  .left { left: 0; top: 35px; }
-  .right { right: 0; top: 35px; }
 
   #pauseBtn {
     right: 20px;
@@ -471,6 +551,10 @@
 
   @media (hover: none), (pointer: coarse) {
     #mobileControls { opacity: 1; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .swipeFinger { animation: none; }
   }
 
   #pauseMenu {
@@ -830,7 +914,7 @@
     <div class="selectPanel">
       <div class="selectPrompt">CHOOSE YOUR CHOMPER</div>
       <div class="selectSub">
-        Keyboard: arrows / WASD &nbsp; • &nbsp; Mobile: swipe or D-pad &nbsp; • &nbsp; Controller: D-pad / stick
+        Keyboard: arrows / WASD &nbsp; • &nbsp; Mobile: swipe &nbsp; • &nbsp; Controller: D-pad / stick
       </div>
 
       <div class="characterLabel">Character Select</div>
@@ -862,6 +946,29 @@
     </div>
   </div>
 
+  <div id="swipeScreen" class="screen hidden" role="dialog" aria-labelledby="swipeTitle">
+    <div class="swipeCard">
+      <div class="swipeKicker">How to Move</div>
+      <div id="swipeTitle" class="swipeTitle">SWIPE TO MOVE</div>
+
+      <div class="swipeGraphic" aria-hidden="true">
+        <span class="swipeArrow up">↑</span>
+        <span class="swipeArrow down">↓</span>
+        <span class="swipeArrow left">←</span>
+        <span class="swipeArrow right">→</span>
+        <span class="swipeFinger">☝️</span>
+      </div>
+
+      <div class="swipeCopy">
+        Swipe the game screen <strong>up, down, left, or right</strong> to move.<br>
+        Your chomper keeps going—swipe again whenever you want to turn.
+      </div>
+
+      <button id="swipeContinueBtn" class="bigBtn">GOT IT — START LEVEL 1</button>
+      <div class="menuHint">Keyboard: arrows / WASD &nbsp; • &nbsp; Controller: D-pad / stick</div>
+    </div>
+  </div>
+
   <div id="endScreen" class="screen hidden">
     <h1 id="endTitle">LAST CALL!</h1>
     <div id="endCopy" class="copy"></div>
@@ -870,12 +977,6 @@
   </div>
 
   <div id="mobileControls">
-    <div class="dpad">
-      <button class="up" data-dir="up">▲</button>
-      <button class="down" data-dir="down">▼</button>
-      <button class="left" data-dir="left">◀</button>
-      <button class="right" data-dir="right">▶</button>
-    </div>
     <button id="pauseBtn">PAUSE</button>
   </div>
 
@@ -935,10 +1036,12 @@
   const fullscreenPrompt = document.getElementById("fullscreenPrompt");
   const startScreen = document.getElementById("startScreen");
   const selectScreen = document.getElementById("selectScreen");
+  const swipeScreen = document.getElementById("swipeScreen");
   const endScreen = document.getElementById("endScreen");
   const titleStartBtn = document.getElementById("titleStartBtn");
   const mainMenuBtn = document.getElementById("mainMenuBtn");
   const startBtn = document.getElementById("startBtn");
+  const swipeContinueBtn = document.getElementById("swipeContinueBtn");
   const restartBtn = document.getElementById("restartBtn");
   const pauseBtn = document.getElementById("pauseBtn");
   const pauseMenu = document.getElementById("pauseMenu");
@@ -1593,6 +1696,7 @@
     hidePauseMenu();
     startScreen.classList.add("hidden");
     selectScreen.classList.add("hidden");
+    swipeScreen.classList.add("hidden");
     endScreen.classList.add("hidden");
     score = 0;
     level = 1;
@@ -2508,6 +2612,7 @@
     stopAllMusic();
     endScreen.classList.add("hidden");
     selectScreen.classList.add("hidden");
+    swipeScreen.classList.add("hidden");
     startScreen.classList.remove("hidden");
     gameState = "start";
     waitingForFirstMove = false;
@@ -2650,7 +2755,7 @@
   }
 
   function isAnyMenuOpen() {
-    return gameState === "start" || gameState === "select" || gameState === "ended";
+    return gameState === "start" || gameState === "select" || gameState === "instructions" || gameState === "ended";
   }
 
   function handleMenuDirection(direction) {
@@ -2682,6 +2787,17 @@
     updateCharacterSelection(selectedMenuIndex);
   }
 
+  function showSwipeInstructions() {
+    unlockAudio();
+    errorBox.style.display = "none";
+    startScreen.classList.add("hidden");
+    selectScreen.classList.add("hidden");
+    endScreen.classList.add("hidden");
+    swipeScreen.classList.remove("hidden");
+    gameState = "instructions";
+    swipeContinueBtn.focus();
+  }
+
   async function activateCurrentMenuItem() {
     unlockAudio();
 
@@ -2692,7 +2808,11 @@
 
     if (gameState === "select") {
       errorBox.style.display = "none";
-      selectScreen.classList.add("hidden");
+      showSwipeInstructions();
+      return;
+    }
+
+    if (gameState === "instructions") {
       startGame();
       return;
     }
@@ -2701,6 +2821,7 @@
       endScreen.classList.add("hidden");
       startScreen.classList.remove("hidden");
       selectScreen.classList.add("hidden");
+      swipeScreen.classList.add("hidden");
       gameState = "start";
       updateCharacterSelection(selectedMenuIndex);
     }
@@ -2876,7 +2997,11 @@
   startBtn.addEventListener("click", async function (e) {
     e.stopPropagation();
     errorBox.style.display = "none";
-    selectScreen.classList.add("hidden");
+    showSwipeInstructions();
+  });
+
+  swipeContinueBtn.addEventListener("click", function (e) {
+    e.stopPropagation();
     startGame();
   });
 
@@ -2944,6 +3069,7 @@
   restartBtn.addEventListener("click", function () {
     endScreen.classList.add("hidden");
     selectScreen.classList.add("hidden");
+    swipeScreen.classList.add("hidden");
     startScreen.classList.remove("hidden");
     gameState = "start";
     hasActivatedFullscreenFromStart = !!document.fullscreenElement;
@@ -2966,17 +3092,10 @@
     quitToTitle();
   });
 
-  document.querySelectorAll("[data-dir]").forEach(function (btn) {
-    btn.addEventListener("pointerdown", function (e) {
-      e.preventDefault();
-      changeDirection(btn.dataset.dir);
-    });
-  });
-
   window.addEventListener("keydown", async function (e) {
     const key = e.key.toLowerCase();
 
-    if (gameState === "start" || gameState === "select" || gameState === "ended") {
+    if (gameState === "start" || gameState === "select" || gameState === "instructions" || gameState === "ended") {
       if (gameState === "start") {
         await primeStartScreenFullscreen();
 
