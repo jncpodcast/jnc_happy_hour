@@ -123,6 +123,49 @@
       0 0 40px rgba(255,128,0,.35);
   }
 
+  .startButtonStack {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+  }
+
+  .mainMenuBtn {
+    display: inline-block;
+    text-decoration: none;
+    border: 0;
+    border-radius: 999px;
+    padding: 14px 26px;
+    color: #081025;
+    font-weight: 1000;
+    letter-spacing: 1px;
+    background: linear-gradient(180deg, #78fbff, #1ab8ff);
+    box-shadow:
+      0 5px 0 #005b88,
+      0 0 18px rgba(120,251,255,.75);
+    font-size: clamp(13px, 1.8vw, 18px);
+  }
+
+  .mainMenuBtn:focus,
+  .mainMenuBtn:hover {
+    outline: 3px solid #ffcc33;
+    box-shadow:
+      0 5px 0 #005b88,
+      0 0 18px rgba(120,251,255,.75),
+      0 0 22px rgba(255,204,51,.85);
+  }
+
+  .titleMenuOption.selected {
+    outline: 4px solid #ffcc33;
+    transform: scale(1.04);
+    box-shadow:
+      0 0 0 4px rgba(255,204,51,.18),
+      0 0 24px rgba(255,204,51,.95),
+      0 0 42px rgba(120,251,255,.45);
+  }
+
   #selectScreen {
     justify-content: center;
     background:
@@ -776,7 +819,10 @@
     </div>
 
     <div class="startButtonWrap">
-      <button id="titleStartBtn" class="bigBtn startOnlyBtn">PRESS START</button>
+      <div class="startButtonStack">
+        <button id="titleStartBtn" class="bigBtn startOnlyBtn titleMenuOption selected">PRESS START</button>
+        <a id="mainMenuBtn" class="mainMenuBtn titleMenuOption" href="index.html">MAIN MENU</a>
+      </div>
     </div>
   </div>
 
@@ -891,6 +937,7 @@
   const selectScreen = document.getElementById("selectScreen");
   const endScreen = document.getElementById("endScreen");
   const titleStartBtn = document.getElementById("titleStartBtn");
+  const mainMenuBtn = document.getElementById("mainMenuBtn");
   const startBtn = document.getElementById("startBtn");
   const restartBtn = document.getElementById("restartBtn");
   const pauseBtn = document.getElementById("pauseBtn");
@@ -960,6 +1007,47 @@
     elly: { name: "Elly", color: "#ff4050", item: "beer" },
     derek: { name: "Capt. Cocktail", color: "#49eaff", item: "tropical" }
   };
+
+
+  const levelMusicUrls = [
+    "https://static.wixstatic.com/mp3/7b5caa_ea34391421a54cc09e362bbb162f8a38.mp3",
+    "https://static.wixstatic.com/mp3/7b5caa_1289d515dfd346399d825068667b0024.mp3",
+    "https://static.wixstatic.com/mp3/7b5caa_8e626e7c696e4c9e9033a596f20e50f7.mp3",
+    "https://static.wixstatic.com/mp3/7b5caa_c21182b719074285850dcabe59e8954c.mp3",
+    "https://static.wixstatic.com/mp3/7b5caa_ea34391421a54cc09e362bbb162f8a38.mp3",
+    "https://static.wixstatic.com/mp3/7b5caa_1289d515dfd346399d825068667b0024.mp3",
+    "https://static.wixstatic.com/mp3/7b5caa_8e626e7c696e4c9e9033a596f20e50f7.mp3",
+    "https://static.wixstatic.com/mp3/7b5caa_c21182b719074285850dcabe59e8954c.mp3"
+  ];
+
+  const bgmTracks = levelMusicUrls.map(function (url) {
+    const audio = new Audio(url);
+    audio.loop = true;
+    audio.volume = 0.22;
+    audio.preload = "auto";
+    return audio;
+  });
+
+  const chompLoop = new Audio("https://static.wixstatic.com/mp3/7b5caa_45280fd2e9704d1e9436b8e388b59e46.mp3");
+  chompLoop.loop = true;
+  chompLoop.volume = 0.34;
+  chompLoop.preload = "auto";
+
+  const sfxEatGhost = new Audio("https://static.wixstatic.com/mp3/7b5caa_a985e81b10a64a70b7918de846b6ced3.mp3");
+  sfxEatGhost.volume = 0.75;
+  sfxEatGhost.preload = "auto";
+
+  const sfxPower = new Audio("https://static.wixstatic.com/mp3/7b5caa_65d5d908ac5640d2bee05bafec8acfa3.mp3");
+  sfxPower.volume = 0.75;
+  sfxPower.preload = "auto";
+
+  const sfxDeath = new Audio("https://static.wixstatic.com/mp3/7b5caa_df91b67f56104589b758c162800b2ac5.mp3");
+  sfxDeath.volume = 0.8;
+  sfxDeath.preload = "auto";
+
+  const sfxLevelComplete = new Audio("https://static.wixstatic.com/mp3/7b5caa_d3f284651c144aa09620284b0bb2e84d.mp3");
+  sfxLevelComplete.volume = 0.82;
+  sfxLevelComplete.preload = "auto";
 
   const levelLayouts = [
     [
@@ -1112,6 +1200,7 @@
   let menuSelectLock = false;
   let pauseMoveLock = false;
   let pauseSelectLock = false;
+  let selectedTitleIndex = 0;
   let selectedMenuIndex = 0;
   let selectedEndIndex = 0;
   let selectedPauseIndex = 0;
@@ -1119,6 +1208,16 @@
   let mobileFullscreenPrimed = false;
   let gamepadStatus = "NO GAMEPAD";
   let waitingForFirstMove = false;
+
+  // Home arcade protection:
+  // When launched from index.html, the controller button may still be held down.
+  // Ignore gamepad input until all buttons/directions are released once.
+  let controllerBootLocked = true;
+  let controllerBootStartedAt = performance.now();
+
+  let audioUnlocked = false;
+  let currentBgm = null;
+  let chompLoopPlaying = false;
 
   let dots = [];
   let powers = [];
@@ -1272,6 +1371,93 @@
     }
   }
 
+  function safePlay(audio) {
+    if (!audio) return;
+    try {
+      const result = audio.play();
+      if (result && result.catch) result.catch(function () {});
+    } catch (err) {}
+  }
+
+  function safePause(audio) {
+    if (!audio) return;
+    try { audio.pause(); } catch (err) {}
+  }
+
+  function playSfx(audio) {
+    if (!audioUnlocked || !audio) return;
+    try {
+      audio.pause();
+      audio.currentTime = 0;
+      safePlay(audio);
+    } catch (err) {}
+  }
+
+  function unlockAudio() {
+    if (audioUnlocked) return;
+    audioUnlocked = true;
+
+    const allAudio = bgmTracks.concat([chompLoop, sfxEatGhost, sfxPower, sfxDeath, sfxLevelComplete]);
+    allAudio.forEach(function (audio) {
+      try { audio.load(); } catch (err) {}
+    });
+  }
+
+  function stopAllMusic() {
+    bgmTracks.forEach(function (track) {
+      safePause(track);
+      try { track.currentTime = 0; } catch (err) {}
+    });
+    currentBgm = null;
+  }
+
+  function playBgmForLevel() {
+    if (!audioUnlocked) return;
+
+    const track = bgmTracks[(level - 1) % bgmTracks.length];
+    if (!track) return;
+    if (currentBgm === track && !track.paused) return;
+
+    bgmTracks.forEach(function (bgm) {
+      if (bgm !== track) {
+        safePause(bgm);
+        try { bgm.currentTime = 0; } catch (err) {}
+      }
+    });
+
+    currentBgm = track;
+    currentBgm.volume = 0.22;
+    safePlay(currentBgm);
+  }
+
+  function pauseBgm() {
+    if (currentBgm) safePause(currentBgm);
+  }
+
+  function resumeBgm() {
+    if (gameState === "playing" && currentBgm && audioUnlocked) safePlay(currentBgm);
+  }
+
+  function startChompLoop() {
+    if (!audioUnlocked || chompLoopPlaying) return;
+    chompLoopPlaying = true;
+    chompLoop.volume = 0.34;
+    safePlay(chompLoop);
+  }
+
+  function stopChompLoop() {
+    if (!chompLoopPlaying) return;
+    chompLoopPlaying = false;
+    safePause(chompLoop);
+    try { chompLoop.currentTime = 0; } catch (err) {}
+  }
+
+  function updateChompLoop() {
+    const shouldChomp = gameState === "playing" && player && player.moving && !waitingForFirstMove;
+    if (shouldChomp) startChompLoop();
+    else stopChompLoop();
+  }
+
   function selectLevelLayout() {
     layout = levelLayouts[(level - 1) % levelLayouts.length];
   }
@@ -1403,6 +1589,7 @@
   }
 
   function startGame() {
+    unlockAudio();
     hidePauseMenu();
     startScreen.classList.add("hidden");
     selectScreen.classList.add("hidden");
@@ -1412,6 +1599,8 @@
     lives = 3;
     loadLevel();
     gameState = "playing";
+    playBgmForLevel();
+    stopChompLoop();
   }
 
   function resetRound() {
@@ -1480,6 +1669,7 @@
       dotsLeft--;
       score += 50;
       powerTimer = level <= 2 ? 10.5 : 8.5;
+      playSfx(sfxPower);
     }
 
     if (score > highScore) {
@@ -1594,9 +1784,12 @@
       if (dist < 21) {
         if (powerTimer > 0) {
           score += 200;
+          playSfx(sfxEatGhost);
           enemy.deadTimer = 2.0;
           enemy.moving = false;
         } else {
+          stopChompLoop();
+          playSfx(sfxDeath);
           lives--;
           if (lives <= 0) {
             endGame(false);
@@ -1620,6 +1813,7 @@
     if (messageTimer > 0) messageTimer--;
 
     if (waitingForFirstMove) {
+      stopChompLoop();
       return;
     }
 
@@ -1628,20 +1822,27 @@
     updatePlayer(dt);
     updateEnemies(dt);
     checkCollisions();
+    updateChompLoop();
 
     if (dotsLeft <= 0) {
+      stopChompLoop();
+      playSfx(sfxLevelComplete);
+
       if (level >= 8) {
         endGame(true);
       } else {
         level++;
         score += 500;
         loadLevel();
+        playBgmForLevel();
       }
     }
   }
 
   function endGame(won) {
     hidePauseMenu();
+    stopChompLoop();
+    stopAllMusic();
     gameState = "ended";
     endScreen.classList.remove("hidden");
 
@@ -2223,6 +2424,7 @@
     if (gameState === "playing" && waitingForFirstMove) {
       waitingForFirstMove = false;
       player.dir = dir;
+      playBgmForLevel();
     }
   }
 
@@ -2270,6 +2472,8 @@
     updatePauseSelection(0);
     pauseMoveLock = false;
     pauseSelectLock = false;
+    stopChompLoop();
+    pauseBgm();
     pauseMenu.classList.add("visible");
   }
 
@@ -2286,22 +2490,30 @@
     } else if (gameState === "paused") {
       gameState = "playing";
       hidePauseMenu();
+      resumeBgm();
     }
   }
 
   function restartCurrentLevel() {
     hidePauseMenu();
+    stopChompLoop();
     loadLevel();
     gameState = "playing";
+    playBgmForLevel();
   }
 
   function quitToTitle() {
     hidePauseMenu();
+    stopChompLoop();
+    stopAllMusic();
     endScreen.classList.add("hidden");
     selectScreen.classList.add("hidden");
     startScreen.classList.remove("hidden");
     gameState = "start";
     waitingForFirstMove = false;
+    controllerBootLocked = true;
+    controllerBootStartedAt = performance.now();
+    updateTitleSelection(selectedTitleIndex);
     updateCharacterSelection(selectedMenuIndex);
   }
 
@@ -2324,6 +2536,31 @@
     }
 
     return false;
+  }
+
+  function anyGamepadButtonPressed(pad) {
+    if (!pad || !pad.buttons) return false;
+
+    for (let i = 0; i < pad.buttons.length; i++) {
+      const button = pad.buttons[i];
+      if (button && (button.pressed || button.value > 0.5)) return true;
+    }
+
+    return false;
+  }
+
+  function anyGamepadAxisActive(pad) {
+    if (!pad || !pad.axes) return false;
+
+    for (let i = 0; i < pad.axes.length; i++) {
+      if (Math.abs(pad.axes[i] || 0) > 0.35) return true;
+    }
+
+    return false;
+  }
+
+  function gamepadIsFullyReleased(pad) {
+    return !anyGamepadButtonPressed(pad) && !anyGamepadAxisActive(pad);
   }
 
   function getGamepadDirection(pad) {
@@ -2387,11 +2624,41 @@
     return null;
   }
 
+  function getTitleMenuOptions() {
+    return [titleStartBtn, mainMenuBtn];
+  }
+
+  function updateTitleSelection(index) {
+    const options = getTitleMenuOptions();
+    const maxIndex = options.length - 1;
+    selectedTitleIndex = Math.max(0, Math.min(maxIndex, index));
+
+    options.forEach(function (option, i) {
+      option.classList.toggle("selected", i === selectedTitleIndex);
+    });
+  }
+
+  async function activateTitleSelection() {
+    if (selectedTitleIndex === 0) {
+      await showCharacterSelect();
+      return;
+    }
+
+    if (selectedTitleIndex === 1) {
+      window.location.href = "index.html";
+    }
+  }
+
   function isAnyMenuOpen() {
     return gameState === "start" || gameState === "select" || gameState === "ended";
   }
 
   function handleMenuDirection(direction) {
+    if (gameState === "start") {
+      if (direction === "left" || direction === "up") updateTitleSelection(selectedTitleIndex - 1);
+      if (direction === "right" || direction === "down") updateTitleSelection(selectedTitleIndex + 1);
+    }
+
     if (gameState === "select") {
       if (direction === "left") updateCharacterSelection(selectedMenuIndex - 1);
       if (direction === "right") updateCharacterSelection(selectedMenuIndex + 1);
@@ -2405,6 +2672,7 @@
   }
 
   async function showCharacterSelect() {
+    unlockAudio();
     errorBox.style.display = "none";
     await primeStartScreenFullscreen();
     fullscreenPrompt.classList.remove("visible");
@@ -2415,8 +2683,10 @@
   }
 
   async function activateCurrentMenuItem() {
+    unlockAudio();
+
     if (gameState === "start") {
-      await showCharacterSelect();
+      await activateTitleSelection();
       return;
     }
 
@@ -2446,6 +2716,24 @@
 
     gamepadStatus = "GAMEPAD OK: " + (pad.id ? pad.id.substring(0, 23) : "CONNECTED");
 
+    if (controllerBootLocked) {
+      const minimumLockMs = 450;
+      const minimumTimePassed = performance.now() - controllerBootStartedAt > minimumLockMs;
+
+      // Unlock only after the controller has had a moment AND every button/axis is neutral.
+      // This prevents the launch button from index.html from double-selecting inside this game.
+      if (minimumTimePassed && gamepadIsFullyReleased(pad)) {
+        controllerBootLocked = false;
+        menuMoveLock = false;
+        menuSelectLock = false;
+        pauseLock = false;
+        pauseMoveLock = false;
+        pauseSelectLock = false;
+      } else {
+        return;
+      }
+    }
+
     const direction = getGamepadDirection(pad);
     const hasDirection = !!direction;
 
@@ -2456,7 +2744,7 @@
         primeStartScreenFullscreen();
       }
 
-      if (gameState === "select" && hasDirection && !menuMoveLock) {
+      if ((gameState === "start" || gameState === "select") && hasDirection && !menuMoveLock) {
         menuMoveLock = true;
         handleMenuDirection(direction);
       }
@@ -2559,8 +2847,29 @@
     });
   });
 
+  titleStartBtn.addEventListener("focus", function () { updateTitleSelection(0); });
+  mainMenuBtn.addEventListener("focus", function () { updateTitleSelection(1); });
+  titleStartBtn.addEventListener("pointerenter", function () { updateTitleSelection(0); });
+  mainMenuBtn.addEventListener("pointerenter", function () { updateTitleSelection(1); });
+
+  mainMenuBtn.addEventListener("click", function () {
+    updateTitleSelection(1);
+    stopChompLoop();
+    stopAllMusic();
+    try {
+      if (document.fullscreenElement && document.exitFullscreen) {
+        document.exitFullscreen();
+      } else if (document.webkitFullscreenElement && document.webkitExitFullscreen) {
+        document.webkitExitFullscreen();
+      }
+    } catch (err) {
+      // Navigation still proceeds.
+    }
+  });
+
   titleStartBtn.addEventListener("click", async function (e) {
     e.stopPropagation();
+    updateTitleSelection(0);
     await showCharacterSelect();
   });
 
@@ -2586,7 +2895,7 @@
   }, { passive: true });
 
   startScreen.addEventListener("pointerdown", function (e) {
-    if (gameState === "start" && !e.target.closest("#titleStartBtn")) {
+    if (gameState === "start" && !e.target.closest("#titleStartBtn, #mainMenuBtn")) {
       primeStartScreenFullscreen();
     }
   });
@@ -2615,8 +2924,12 @@
   document.addEventListener("webkitfullscreenchange", updateMobileFullscreenPrompt);
 
   document.addEventListener("visibilitychange", function () {
-    if (!document.hidden) {
+    if (document.hidden) {
+      stopChompLoop();
+      pauseBgm();
+    } else {
       setTimeout(handlePostRotateMaybeFullscreen, 120);
+      resumeBgm();
     }
   });
 
@@ -2635,6 +2948,7 @@
     gameState = "start";
     hasActivatedFullscreenFromStart = !!document.fullscreenElement;
     mobileFullscreenPrimed = !!document.fullscreenElement;
+    updateTitleSelection(selectedTitleIndex);
     updateCharacterSelection(selectedMenuIndex);
   });
 
@@ -2665,6 +2979,11 @@
     if (gameState === "start" || gameState === "select" || gameState === "ended") {
       if (gameState === "start") {
         await primeStartScreenFullscreen();
+
+        if (key === "arrowleft" || key === "a") handleMenuDirection("left");
+        if (key === "arrowright" || key === "d") handleMenuDirection("right");
+        if (key === "arrowup" || key === "w") handleMenuDirection("up");
+        if (key === "arrowdown" || key === "s") handleMenuDirection("down");
       }
 
       if (gameState === "select") {
@@ -2672,6 +2991,11 @@
         if (key === "arrowright" || key === "d") handleMenuDirection("right");
         if (key === "arrowup" || key === "w") handleMenuDirection("up");
         if (key === "arrowdown" || key === "s") handleMenuDirection("down");
+      }
+
+      if (gameState === "start" && key === "m") {
+        window.location.href = "index.html";
+        return;
       }
 
       if (key === " " || key === "enter") {
