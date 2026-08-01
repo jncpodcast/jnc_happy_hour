@@ -1,0 +1,2752 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+<title>JNC Happy Hour - Wide Lanes + Jordy Sprites</title>
+
+<style>
+  * {
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  html, body {
+    margin: 0;
+    width: 100%;
+    height: 100%;
+    background: radial-gradient(circle at top, #35135f, #05020a 62%, #000);
+    font-family: Arial, Helvetica, sans-serif;
+    color: white;
+    overflow: hidden;
+    touch-action: none;
+  }
+
+  body {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+
+  #gameShell {
+    width: min(100vw, 960px);
+    aspect-ratio: 16 / 9;
+    max-height: 100vh;
+    position: relative;
+    background: #04010a;
+    border: clamp(3px, 0.6vw, 6px) solid #ffcc33;
+    border-radius: 18px;
+    overflow: hidden;
+    box-shadow:
+      0 0 18px #ffcc33,
+      0 0 44px rgba(128, 0, 255, 0.72),
+      inset 0 0 22px rgba(0, 255, 255, 0.18);
+  }
+
+  canvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+    background: #04010a;
+  }
+
+  .screen {
+    position: absolute;
+    inset: 0;
+    z-index: 20;
+    padding: clamp(14px, 3vw, 28px);
+    background:
+      radial-gradient(circle at top, rgba(255,204,51,.2), transparent 35%),
+      linear-gradient(180deg, rgba(9,3,24,.98), rgba(0,0,0,.98));
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+
+  #startScreen {
+    justify-content: flex-end;
+    background-color: #020006;
+    background-image:
+      linear-gradient(180deg, rgba(2,0,8,.02), rgba(2,0,8,.06) 42%, rgba(0,0,0,.35) 78%, rgba(0,0,0,.72) 100%),
+      url("https://static.wixstatic.com/media/7b5caa_d37c5e96f13c4876ad00c599079a5a30~mv2.jpg");
+    background-position: center center, center center;
+    background-size: 100% 100%, contain;
+    background-repeat: no-repeat, no-repeat;
+    cursor: pointer;
+  }
+
+  #startScreen h1,
+  #startScreen .subtitle,
+  #startScreen .copy {
+    display: none;
+  }
+
+  #selectScreen .selectPanel {
+    width: min(880px, 96%);
+    margin: 0 auto;
+    padding: 16px 16px 14px;
+    border: 3px solid rgba(255, 204, 51, .8);
+    border-radius: 20px;
+    background: rgba(5, 2, 12, .76);
+    box-shadow:
+      0 0 18px rgba(255,204,51,.35),
+      inset 0 0 18px rgba(0,255,255,.10);
+    backdrop-filter: blur(4px);
+  }
+
+  #startScreen .bigBtn,
+  #selectScreen .bigBtn {
+    margin-top: 14px;
+    margin-bottom: 0;
+  }
+
+  #startScreen .bigBtn {
+    margin-top: 0;
+  }
+
+  .startButtonWrap {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    padding-bottom: clamp(18px, 4vw, 30px);
+  }
+
+  .startOnlyBtn {
+    min-width: clamp(180px, 28vw, 280px);
+    font-size: clamp(16px, 2.3vw, 24px);
+    padding: 16px 34px;
+    letter-spacing: 1.5px;
+    box-shadow:
+      0 5px 0 #8b4700,
+      0 0 22px rgba(255,204,51,.9),
+      0 0 40px rgba(255,128,0,.35);
+  }
+
+  #selectScreen {
+    justify-content: center;
+    background:
+      radial-gradient(circle at top, rgba(255,204,51,.18), transparent 30%),
+      linear-gradient(180deg, rgba(11,5,26,.98), rgba(0,0,0,.96));
+  }
+
+  .selectPrompt {
+    color: #ffcc33;
+    font-weight: 1000;
+    font-size: clamp(15px, 2vw, 20px);
+    letter-spacing: 1px;
+    text-shadow: 0 0 12px rgba(255,204,51,.5);
+    margin-bottom: 10px;
+  }
+
+  .selectSub {
+    color: #e9dcff;
+    font-size: clamp(11px, 1.35vw, 14px);
+    line-height: 1.35;
+    margin-bottom: 12px;
+  }
+
+  .characterLabel {
+    color: #78fbff;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 8px;
+    font-size: clamp(11px, 1.4vw, 14px);
+  }
+
+  #endScreen {
+    justify-content: center;
+    gap: 18px;
+  }
+
+  #endScreen .bigBtn {
+    margin-top: 8px;
+    margin-bottom: 0;
+  }
+
+  .menuHint {
+    color: #cfc5ff;
+    font-size: clamp(10px, 1.3vw, 13px);
+    line-height: 1.3;
+    margin-top: 8px;
+  }
+
+  .hidden { display: none !important; }
+
+  h1 {
+    margin: 0 0 4px;
+    font-size: clamp(34px, 7vw, 72px);
+    line-height: .9;
+    color: #ffcc33;
+    letter-spacing: 3px;
+    text-shadow: 4px 4px 0 #7327ff, 0 0 16px #ffcc33;
+  }
+
+  .subtitle {
+    color: #78fbff;
+    font-weight: bold;
+    font-size: clamp(12px, 1.8vw, 18px);
+    letter-spacing: 1.4px;
+    margin-bottom: 12px;
+    text-transform: uppercase;
+  }
+
+  .copy {
+    width: min(720px, 92%);
+    color: #eee7ff;
+    font-size: clamp(13px, 1.7vw, 17px);
+    line-height: 1.35;
+    margin: 8px 0 14px;
+  }
+
+  .characterGrid {
+    width: min(760px, 94%);
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    margin-top: 8px;
+  }
+
+  .charBtn {
+    border: 2px solid #35f3ff;
+    border-radius: 14px;
+    background: rgba(20, 10, 44, .9);
+    color: white;
+    padding: 10px 8px 12px;
+    font-weight: 900;
+    font-size: clamp(11px, 1.6vw, 16px);
+    cursor: pointer;
+    box-shadow: 0 0 12px rgba(53, 243, 255, .38);
+  }
+
+  .charBtn .charSprite {
+    display: block;
+    width: clamp(38px, 5vw, 54px);
+    height: clamp(38px, 5vw, 54px);
+    object-fit: contain;
+    image-rendering: pixelated;
+    margin: 0 auto 8px;
+    filter: drop-shadow(0 0 6px rgba(255, 204, 51, .32));
+  }
+
+  .charBtn .charName {
+    display: block;
+    line-height: 1.05;
+  }
+
+  .charBtn small {
+    display: block;
+    color: #d8ceff;
+    font-size: clamp(8px, 1vw, 11px);
+    margin-top: 4px;
+    line-height: 1.15;
+  }
+
+  .charBtn.selected {
+    border-color: #ffcc33;
+    background: rgba(255,204,51,.18);
+    box-shadow: 0 0 16px rgba(255,204,51,.82);
+  }
+
+  .bigBtn {
+    margin-top: auto;
+    margin-bottom: 12px;
+    border: 0;
+    border-radius: 999px;
+    padding: 14px 28px;
+    background: linear-gradient(180deg, #ffe66a, #ff9b16);
+    color: #1a0929;
+    font-weight: 1000;
+    letter-spacing: 1px;
+    cursor: pointer;
+    box-shadow: 0 5px 0 #8b4700, 0 0 18px rgba(255,204,51,.7);
+    font-size: clamp(13px, 2vw, 18px);
+  }
+
+  #endScreen {
+    justify-content: center !important;
+    align-items: center !important;
+    gap: 18px !important;
+  }
+
+  #endScreen h1 {
+    margin: 0 0 4px !important;
+  }
+
+  #endScreen .copy {
+    margin: 0 auto !important;
+    max-width: 720px;
+  }
+
+  #endScreen .bigBtn {
+    margin: 8px 0 0 0 !important;
+  }
+
+  #endScreen .menuHint {
+    margin-top: 0 !important;
+  }
+
+  .note {
+    color: #cfc5ff;
+    font-size: clamp(10px, 1.4vw, 13px);
+    line-height: 1.35;
+    margin-top: 12px;
+  }
+
+  #mobileControls {
+    position: absolute;
+    inset: auto 0 12px 0;
+    height: 108px;
+    z-index: 9;
+    pointer-events: none;
+  }
+
+  .dpad {
+    position: absolute;
+    left: 18px;
+    bottom: 0;
+    width: 108px;
+    height: 108px;
+    pointer-events: auto;
+  }
+
+  .dpad button, #pauseBtn {
+    position: absolute;
+    border: 2px solid rgba(255,255,255,.72);
+    background: rgba(10,8,28,.58);
+    color: white;
+    border-radius: 14px;
+    font-weight: 900;
+    backdrop-filter: blur(3px);
+  }
+
+  .dpad button {
+    width: 38px;
+    height: 38px;
+    font-size: 20px;
+  }
+
+  .up { left: 35px; top: 0; }
+  .down { left: 35px; bottom: 0; }
+  .left { left: 0; top: 35px; }
+  .right { right: 0; top: 35px; }
+
+  #pauseBtn {
+    right: 20px;
+    bottom: 14px;
+    width: 88px;
+    height: 50px;
+    font-size: 13px;
+    pointer-events: auto;
+  }
+
+  #rotateScreen {
+    position: fixed;
+    z-index: 200;
+    inset: 0;
+    background:
+      radial-gradient(circle at top, rgba(255,204,51,.16), transparent 38%),
+      linear-gradient(180deg, #14072b, #020006);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 28px;
+    color: #ffcc33;
+  }
+
+  .rotateCard {
+    width: min(420px, 92vw);
+    border: 3px solid #ffcc33;
+    border-radius: 22px;
+    padding: 28px 18px;
+    box-shadow:
+      0 0 18px #ffcc33,
+      0 0 34px rgba(128, 0, 255, 0.72),
+      inset 0 0 18px rgba(0, 255, 255, 0.15);
+    background: rgba(5, 2, 12, .9);
+  }
+
+  .rotateIcon {
+    font-size: 54px;
+    margin-bottom: 12px;
+    text-shadow: 0 0 12px #ffcc33;
+  }
+
+  .rotateTitle {
+    font-size: 28px;
+    font-weight: 1000;
+    line-height: 1;
+    letter-spacing: 1px;
+    margin-bottom: 10px;
+    text-shadow: 3px 3px 0 #7327ff;
+  }
+
+  .rotateCopy {
+    color: #e9dcff;
+    font-size: 15px;
+    line-height: 1.35;
+  }
+
+  #gameShell:fullscreen {
+    width: 100vw;
+    height: 100vh;
+    max-height: none;
+    aspect-ratio: auto;
+    border-radius: 0;
+    border: 0;
+    box-shadow: none;
+    background: #04010a;
+  }
+
+  #gameShell:fullscreen canvas {
+    width: 100vw;
+    height: 100vh;
+  }
+
+  #gameShell:-webkit-full-screen {
+    width: 100vw;
+    height: 100vh;
+    max-height: none;
+    aspect-ratio: auto;
+    border-radius: 0;
+    border: 0;
+    box-shadow: none;
+    background: #04010a;
+  }
+
+  @media (orientation: portrait) {
+    #rotateScreen {
+      display: flex;
+    }
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    #mobileControls { opacity: 0.18; }
+  }
+
+  @media (hover: none), (pointer: coarse) {
+    #mobileControls { opacity: 1; }
+  }
+
+  #pauseMenu {
+    position: absolute;
+    inset: 0;
+    z-index: 18;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, .72);
+  }
+
+  #pauseMenu.visible {
+    display: flex;
+  }
+
+  .pauseCard {
+    width: min(520px, 88%);
+    max-height: min(92vh, 92dvh);
+    overflow-y: auto;
+    border: 3px solid #ffcc33;
+    border-radius: 22px;
+    padding: 24px 22px;
+    background: rgba(5, 2, 12, .92);
+    box-shadow:
+      0 0 18px rgba(255,204,51,.75),
+      0 0 36px rgba(128,0,255,.55),
+      inset 0 0 18px rgba(0,255,255,.12);
+    text-align: center;
+  }
+
+  .pauseTitle {
+    color: #ffcc33;
+    font-weight: 1000;
+    font-size: clamp(30px, 5vw, 46px);
+    line-height: 1;
+    letter-spacing: 2px;
+    text-shadow: 3px 3px 0 #7327ff, 0 0 14px #ffcc33;
+    margin-bottom: 14px;
+  }
+
+  .pauseStats {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    margin: 12px auto 18px;
+    width: min(420px, 100%);
+  }
+
+  .pauseStat {
+    border: 2px solid rgba(120,251,255,.55);
+    border-radius: 12px;
+    padding: 9px 8px;
+    background: rgba(20,10,44,.78);
+    box-shadow: inset 0 0 12px rgba(0,255,255,.08);
+  }
+
+  .pauseStatLabel {
+    color: #78fbff;
+    font-size: 11px;
+    font-weight: 900;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 3px;
+  }
+
+  .pauseStatValue {
+    color: #fff;
+    font-size: 18px;
+    font-weight: 1000;
+  }
+
+  .pauseActions {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+    width: min(330px, 100%);
+    margin: 0 auto;
+  }
+
+  .pauseActionBtn {
+    border: 0;
+    border-radius: 999px;
+    padding: 12px 18px;
+    font-weight: 1000;
+    letter-spacing: 1px;
+    cursor: pointer;
+    color: #1a0929;
+    background: linear-gradient(180deg, #ffe66a, #ff9b16);
+    box-shadow: 0 4px 0 #8b4700, 0 0 14px rgba(255,204,51,.65);
+  }
+
+  @media (max-height: 560px), ((hover: none) and (pointer: coarse)) {
+    .pauseCard {
+      width: min(450px, 94%);
+      max-height: min(90vh, 90dvh);
+      padding: 14px 14px 12px;
+      border-radius: 18px;
+    }
+
+    .pauseTitle {
+      font-size: clamp(24px, 4vw, 34px);
+      margin-bottom: 8px;
+    }
+
+    .pauseStats {
+      gap: 7px;
+      margin: 8px auto 12px;
+      width: min(390px, 100%);
+    }
+
+    .pauseStat {
+      padding: 6px 6px;
+      border-radius: 10px;
+    }
+
+    .pauseStatLabel {
+      font-size: 9px;
+      margin-bottom: 2px;
+    }
+
+    .pauseStatValue {
+      font-size: 15px;
+    }
+
+    .pauseActions {
+      gap: 8px;
+      width: min(280px, 100%);
+    }
+
+    .pauseActionBtn {
+      padding: 10px 14px;
+      font-size: 13px;
+    }
+
+    .pauseHint {
+      font-size: 10px;
+      margin-top: 10px;
+    }
+  }
+
+  @media (max-width: 700px), (max-height: 520px) {
+    .characterGrid {
+      gap: 8px;
+    }
+
+    .charBtn {
+      padding: 8px 6px 10px;
+    }
+
+    .charBtn .charSprite {
+      width: clamp(30px, 6vw, 44px);
+      height: clamp(30px, 6vw, 44px);
+      margin-bottom: 6px;
+    }
+
+    .charBtn .charName {
+      font-size: clamp(10px, 1.9vw, 14px);
+    }
+
+    .charBtn small {
+      font-size: clamp(7px, .95vw, 10px);
+    }
+  }
+
+  @media (max-height: 430px) {
+    .pauseCard {
+      width: min(420px, 96%);
+      max-height: min(88vh, 88dvh);
+      padding: 10px 10px 8px;
+    }
+
+    .pauseTitle {
+      font-size: 22px;
+      margin-bottom: 6px;
+    }
+
+    .pauseStats {
+      gap: 6px;
+      margin: 6px auto 10px;
+    }
+
+    .pauseStatLabel {
+      font-size: 8px;
+    }
+
+    .pauseStatValue {
+      font-size: 13px;
+    }
+
+    .pauseActions {
+      gap: 6px;
+      width: min(260px, 100%);
+    }
+
+    .pauseActionBtn {
+      padding: 8px 12px;
+      font-size: 12px;
+    }
+
+    .pauseHint {
+      font-size: 9px;
+      margin-top: 8px;
+    }
+  }
+
+  .pauseActionBtn.secondary {
+    background: linear-gradient(180deg, #78fbff, #1ab8ff);
+    box-shadow: 0 4px 0 #005b88, 0 0 14px rgba(120,251,255,.5);
+  }
+
+  .pauseActionBtn.danger {
+    background: linear-gradient(180deg, #ff7d7d, #ff3232);
+    box-shadow: 0 4px 0 #8b0000, 0 0 14px rgba(255,80,80,.5);
+  }
+
+  .pauseActionBtn.selected {
+    outline: 3px solid #78fbff;
+    box-shadow:
+      0 0 0 3px rgba(120,251,255,.22),
+      0 0 18px rgba(120,251,255,.85);
+    transform: scale(1.02);
+  }
+
+  .pauseHint {
+    color: #cfc5ff;
+    font-size: 12px;
+    margin-top: 14px;
+    line-height: 1.3;
+  }
+
+  #fullscreenPrompt {
+    position: fixed;
+    z-index: 190;
+    inset: 0;
+    background:
+      radial-gradient(circle at center, rgba(255,204,51,.18), transparent 42%),
+      linear-gradient(180deg, rgba(9,3,24,.95), rgba(0,0,0,.96));
+    display: none;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 28px;
+    color: #ffcc33;
+  }
+
+  #fullscreenPrompt.visible {
+    display: flex;
+  }
+
+  .fullscreenCard {
+    width: min(460px, 90vw);
+    border: 3px solid #ffcc33;
+    border-radius: 22px;
+    padding: 28px 20px;
+    background: rgba(5, 2, 12, .92);
+    box-shadow:
+      0 0 18px #ffcc33,
+      0 0 34px rgba(128, 0, 255, 0.72),
+      inset 0 0 18px rgba(0, 255, 255, 0.15);
+  }
+
+  .fullscreenTitle {
+    font-size: 30px;
+    font-weight: 1000;
+    line-height: 1;
+    letter-spacing: 1px;
+    margin-bottom: 10px;
+    text-shadow: 3px 3px 0 #7327ff;
+  }
+
+  .fullscreenCopy {
+    color: #e9dcff;
+    font-size: 15px;
+    line-height: 1.35;
+    margin-bottom: 18px;
+  }
+
+  .fullscreenTap {
+    display: inline-block;
+    border-radius: 999px;
+    padding: 13px 24px;
+    color: #1a0929;
+    font-weight: 1000;
+    letter-spacing: 1px;
+    background: linear-gradient(180deg, #ffe66a, #ff9b16);
+    box-shadow: 0 5px 0 #8b4700, 0 0 20px rgba(255,204,51,.75);
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    #fullscreenPrompt {
+      display: none !important;
+    }
+  }
+
+  #errorBox {
+    position: absolute;
+    left: 16px;
+    right: 16px;
+    bottom: 126px;
+    z-index: 50;
+    padding: 8px;
+    background: rgba(255, 0, 0, 0.85);
+    color: white;
+    font-size: 12px;
+    line-height: 1.25;
+    border-radius: 8px;
+    display: none;
+  }
+</style>
+</head>
+
+<body>
+<div id="rotateScreen">
+  <div class="rotateCard">
+    <div class="rotateIcon">📱↔️</div>
+    <div class="rotateTitle">TURN YOUR PHONE</div>
+    <div class="rotateCopy">
+      JNC Happy Hour is built for landscape mode.<br>
+      Rotate your phone sideways to play.
+    </div>
+  </div>
+</div>
+
+<div id="fullscreenPrompt">
+  <div class="fullscreenCard">
+    <div class="fullscreenTitle">ENTER FULLSCREEN</div>
+    <div class="fullscreenCopy">
+      Tap below to launch JNC Happy Hour in fullscreen landscape mode.
+    </div>
+    <div class="fullscreenTap">TAP TO PLAY</div>
+  </div>
+</div>
+
+<div id="gameShell">
+  <canvas id="gameCanvas" width="960" height="540"></canvas>
+
+  <div id="startScreen" class="screen">
+    <h1>JNC HAPPY HOUR</h1>
+    <div class="subtitle">Retro Arcade Lounge Maze</div>
+
+    <div class="copy">
+      Bigger characters, wider lanes, and a roomier horizontal maze built for Android landscape and PC.
+      Choose your chomper, clear the neon lounge, dodge the hangovers, skulls,
+      and buzzkills, and grab power shots to fight back.
+    </div>
+
+    <div class="startButtonWrap">
+      <button id="titleStartBtn" class="bigBtn startOnlyBtn">PRESS START</button>
+    </div>
+  </div>
+
+  <div id="selectScreen" class="screen hidden">
+    <div class="selectPanel">
+      <div class="selectPrompt">CHOOSE YOUR CHOMPER</div>
+      <div class="selectSub">
+        Keyboard: arrows / WASD &nbsp; • &nbsp; Mobile: swipe or D-pad &nbsp; • &nbsp; Controller: D-pad / stick
+      </div>
+
+      <div class="characterLabel">Character Select</div>
+
+      <div class="characterGrid">
+        <button class="charBtn selected" data-character="brad">
+          <img class="charSprite" src="https://static.wixstatic.com/media/7b5caa_69950daabbe3408f89f6082e0413880a~mv2.png" alt="Brad sprite frame 2">
+          <span class="charName">Brad</span>
+          <small>Scotch Glasses</small>
+        </button>
+        <button class="charBtn" data-character="jordy">
+          <img class="charSprite" src="https://static.wixstatic.com/media/7b5caa_9f05326cebc1439bb36b6ca158e9044d~mv2.png" alt="Jordy sprite frame 2">
+          <span class="charName">Jordy</span>
+          <small>Espresso Martinis</small>
+        </button>
+        <button class="charBtn" data-character="elly">
+          <img class="charSprite" src="https://static.wixstatic.com/media/7b5caa_e4bb62ed63d046919e7c2e7ec6971437~mv2.png" alt="Elly sprite frame 2">
+          <span class="charName">Elly</span>
+          <small>Beer Mugs</small>
+        </button>
+        <button class="charBtn" data-character="derek">
+          <img class="charSprite" src="https://static.wixstatic.com/media/7b5caa_9054fe5a02cd437a980ae927209e5b6e~mv2.png" alt="Capt Cocktail sprite frame 2">
+          <span class="charName">Capt. Cocktail</span>
+          <small>Tropical Drinks</small>
+        </button>
+      </div>
+
+      <button id="startBtn" class="bigBtn">START HAPPY HOUR</button>
+    </div>
+  </div>
+
+  <div id="endScreen" class="screen hidden">
+    <h1 id="endTitle">LAST CALL!</h1>
+    <div id="endCopy" class="copy"></div>
+    <button id="restartBtn" class="bigBtn">PLAY AGAIN</button>
+    <div class="menuHint">Controller: D-pad to choose • A / Start to select</div>
+  </div>
+
+  <div id="mobileControls">
+    <div class="dpad">
+      <button class="up" data-dir="up">▲</button>
+      <button class="down" data-dir="down">▼</button>
+      <button class="left" data-dir="left">◀</button>
+      <button class="right" data-dir="right">▶</button>
+    </div>
+    <button id="pauseBtn">PAUSE</button>
+  </div>
+
+  <div id="pauseMenu">
+    <div class="pauseCard">
+      <div class="pauseTitle">PAUSED</div>
+
+      <div class="pauseStats">
+        <div class="pauseStat">
+          <div class="pauseStatLabel">Score</div>
+          <div id="pauseScore" class="pauseStatValue">0</div>
+        </div>
+        <div class="pauseStat">
+          <div class="pauseStatLabel">High</div>
+          <div id="pauseHigh" class="pauseStatValue">0</div>
+        </div>
+        <div class="pauseStat">
+          <div class="pauseStatLabel">Level</div>
+          <div id="pauseLevel" class="pauseStatValue">1/8</div>
+        </div>
+        <div class="pauseStat">
+          <div class="pauseStatLabel">Lives</div>
+          <div id="pauseLives" class="pauseStatValue">3</div>
+        </div>
+        <div class="pauseStat">
+          <div class="pauseStatLabel">Dots Left</div>
+          <div id="pauseDots" class="pauseStatValue">0</div>
+        </div>
+        <div class="pauseStat">
+          <div class="pauseStatLabel">Character</div>
+          <div id="pauseCharacter" class="pauseStatValue">Brad</div>
+        </div>
+      </div>
+
+      <div class="pauseActions">
+        <button id="resumeGameBtn" class="pauseActionBtn">RESUME</button>
+        <button id="restartGameBtn" class="pauseActionBtn secondary">RESTART LEVEL</button>
+        <button id="quitGameBtn" class="pauseActionBtn danger">QUIT TO TITLE</button>
+      </div>
+
+      <div class="pauseHint">Keyboard/controller: pause to resume • Touch: use buttons</div>
+    </div>
+  </div>
+
+  <div id="errorBox"></div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  const canvas = document.getElementById("gameCanvas");
+  const ctx = canvas.getContext("2d");
+  ctx.imageSmoothingEnabled = false;
+
+  const rotateScreen = document.getElementById("rotateScreen");
+  const fullscreenPrompt = document.getElementById("fullscreenPrompt");
+  const startScreen = document.getElementById("startScreen");
+  const selectScreen = document.getElementById("selectScreen");
+  const endScreen = document.getElementById("endScreen");
+  const titleStartBtn = document.getElementById("titleStartBtn");
+  const startBtn = document.getElementById("startBtn");
+  const restartBtn = document.getElementById("restartBtn");
+  const pauseBtn = document.getElementById("pauseBtn");
+  const pauseMenu = document.getElementById("pauseMenu");
+  const resumeGameBtn = document.getElementById("resumeGameBtn");
+  const restartGameBtn = document.getElementById("restartGameBtn");
+  const quitGameBtn = document.getElementById("quitGameBtn");
+  const pauseScore = document.getElementById("pauseScore");
+  const pauseHigh = document.getElementById("pauseHigh");
+  const pauseLevel = document.getElementById("pauseLevel");
+  const pauseLives = document.getElementById("pauseLives");
+  const pauseDots = document.getElementById("pauseDots");
+  const pauseCharacter = document.getElementById("pauseCharacter");
+  const endTitle = document.getElementById("endTitle");
+  const endCopy = document.getElementById("endCopy");
+  const errorBox = document.getElementById("errorBox");
+  const charBtns = document.querySelectorAll(".charBtn");
+
+  window.addEventListener("error", function (event) {
+    errorBox.style.display = "block";
+    errorBox.textContent = "Game error: " + event.message;
+  });
+
+  const W = 960;
+  const H = 540;
+  const TILE = 30;
+  const COLS = 25;
+  const ROWS = 13;
+  const MAZE_X = Math.floor((W - COLS * TILE) / 2);
+  const MAZE_Y = 92;
+
+  const bradFrame1 = new Image();
+  bradFrame1.crossOrigin = "anonymous";
+  bradFrame1.src = "https://static.wixstatic.com/media/7b5caa_efba330c66c74f22a4a0a4a754974046~mv2.png";
+
+  const bradFrame2 = new Image();
+  bradFrame2.crossOrigin = "anonymous";
+  bradFrame2.src = "https://static.wixstatic.com/media/7b5caa_69950daabbe3408f89f6082e0413880a~mv2.png";
+
+  const jordyFrame1 = new Image();
+  jordyFrame1.crossOrigin = "anonymous";
+  jordyFrame1.src = "https://static.wixstatic.com/media/7b5caa_7ef55973c1ac4c3f9523c2bb5e0ba7b4~mv2.png";
+
+  const jordyFrame2 = new Image();
+  jordyFrame2.crossOrigin = "anonymous";
+  jordyFrame2.src = "https://static.wixstatic.com/media/7b5caa_9f05326cebc1439bb36b6ca158e9044d~mv2.png";
+
+  const ellyFrame1 = new Image();
+  ellyFrame1.crossOrigin = "anonymous";
+  ellyFrame1.src = "https://static.wixstatic.com/media/7b5caa_521b6996b83441d9b8717ed0cbb057e4~mv2.png";
+
+  const ellyFrame2 = new Image();
+  ellyFrame2.crossOrigin = "anonymous";
+  ellyFrame2.src = "https://static.wixstatic.com/media/7b5caa_e4bb62ed63d046919e7c2e7ec6971437~mv2.png";
+
+  const derekFrame1 = new Image();
+  derekFrame1.crossOrigin = "anonymous";
+  derekFrame1.src = "https://static.wixstatic.com/media/7b5caa_74d9d3da836e4ee3981c80e81f2efefc~mv2.png";
+
+  const derekFrame2 = new Image();
+  derekFrame2.crossOrigin = "anonymous";
+  derekFrame2.src = "https://static.wixstatic.com/media/7b5caa_9054fe5a02cd437a980ae927209e5b6e~mv2.png";
+
+  const characters = {
+    brad: { name: "Brad", color: "#ffcc33", item: "scotch" },
+    jordy: { name: "Jordy", color: "#ff5ed1", item: "espresso" },
+    elly: { name: "Elly", color: "#ff4050", item: "beer" },
+    derek: { name: "Capt. Cocktail", color: "#49eaff", item: "tropical" }
+  };
+
+  const levelLayouts = [
+    [
+      "#########################",
+      "#o.........#.........o#.#",
+      "#.###.###..#..###.###.#.#",
+      "#.......................#",
+      "#.###.#.#######.#.###.#.#",
+      "#.....#...#B#...#.....#.#",
+      "###.#.###.#.#.###.#.###.#",
+      "#.......................#",
+      "#.###.#.#######.#.###.#.#",
+      "#o..#.#...P.....#.#..o#.#",
+      "###.#.###.#.#.###.#.###.#",
+      "#.......................#",
+      "#########################"
+    ],
+    [
+      "#########################",
+      "#o.....................o#",
+      "#.####.###.###.###.####.#",
+      "#......#.....#.....#....#",
+      "#.####.#.###.#.###.#.##.#",
+      "#......#...#B#...#......#",
+      "###.######.#.#.######.###",
+      "#.......................#",
+      "#.###.###.#####.###.###.#",
+      "#o..#.....P........#..o##",
+      "#.#.#####.###.#####.#.###",
+      "#.......................#",
+      "#########################"
+    ],
+    [
+      "#########################",
+      "#o.......#.....#.......o#",
+      "#.###.##.#.###.#.##.###.#",
+      "#.....#...........#.....#",
+      "###.#.#.#######.#.#.#.###",
+      "#...#.....#B#.....#.....#",
+      "#.#####.#.#.#.#.#####.#.#",
+      "#.......................#",
+      "#.#####.###.###.#####.#.#",
+      "#o......#...P...#.....o##",
+      "###.###.#.#####.#.###.###",
+      "#.......................#",
+      "#########################"
+    ],
+    [
+      "#########################",
+      "#o.....................o#",
+      "#.###.#####.#.#####.###.#",
+      "#...#.......#.......#...#",
+      "###.#.###.#####.###.#.###",
+      "#.....#.....B.....#.....#",
+      "#.###.#.###...###.#.###.#",
+      "#.......................#",
+      "#.###.#####.#.#####.###.#",
+      "#o....#....P....#.....o##",
+      "###.#.#.#######.#.#.#####",
+      "#.......................#",
+      "#########################"
+    ],
+    [
+      "#########################",
+      "#o.........#.........o#.#",
+      "#.###.###..#..###.###.#.#",
+      "#...#...............#...#",
+      "###.#.#####.#.#####.#.###",
+      "#.....#...#B#...#.......#",
+      "#.###.#.#.###.#.#.###.#.#",
+      "#.......................#",
+      "#.#.###.#.###.#.###.#.#.#",
+      "#o....#.....P.....#...o##",
+      "#####.#.#######.#.#####.#",
+      "#.......................#",
+      "#########################"
+    ],
+    [
+      "#########################",
+      "#o.....................o#",
+      "#.#####.#.#####.#.#####.#",
+      "#.....#.#...#...#.#.....#",
+      "###.#.#.###.#.###.#.#.###",
+      "#...#.....#B#.....#.....#",
+      "#.#######.#.#.#######.#.#",
+      "#.......................#",
+      "#.#.#####.###.#####.#.#.#",
+      "#o#.....#..P..#.....#o#.#",
+      "#.###.#.#####.#.###.#.###",
+      "#.......................#",
+      "#########################"
+    ],
+    [
+      "#########################",
+      "#o.....#.........#.....o#",
+      "#.###.#.###.#.###.#.###.#",
+      "#.....#.....#.....#.....#",
+      "#.#######.#####.#######.#",
+      "#.......#..#B#..#.......#",
+      "###.###.#.#.#.#.#.###.###",
+      "#.......................#",
+      "#.###.#####.#####.###.#.#",
+      "#o..#.......P.....#..o#.#",
+      "###.#.###.###.###.#.###.#",
+      "#.......................#",
+      "#########################"
+    ],
+    [
+      "#########################",
+      "#o.....................o#",
+      "#.###.###.#####.###.###.#",
+      "#...#.#...........#.#...#",
+      "###.#.#.###.#.###.#.#.###",
+      "#.....#...#B#...#.......#",
+      "#.#######.#.#.#######.#.#",
+      "#.......................#",
+      "#.#.###.#######.###.#.#.#",
+      "#o#.....#..P..#.....#o#.#",
+      "#.###.#.#.###.#.#.###.#.#",
+      "#.......................#",
+      "#########################"
+    ]
+  ];
+
+  let layout = levelLayouts[0];
+
+  const dirs = {
+    left: { dc: -1, dr: 0 },
+    right: { dc: 1, dr: 0 },
+    up: { dc: 0, dr: -1 },
+    down: { dc: 0, dr: 1 },
+    none: { dc: 0, dr: 0 }
+  };
+
+  const opposite = { left: "right", right: "left", up: "down", down: "up", none: "none" };
+
+  let selectedCharacter = "brad";
+  let gameState = "start";
+  let score = 0;
+  let highScore = Number(localStorage.getItem("jncHappyHourHighScoreWideLanes") || 0);
+  let level = 1;
+  let lives = 3;
+  let dotsLeft = 0;
+  let powerTimer = 0;
+  let messageTimer = 0;
+  let frame = 0;
+  let lastTime = 0;
+  let pauseLock = false;
+  let menuMoveLock = false;
+  let menuSelectLock = false;
+  let pauseMoveLock = false;
+  let pauseSelectLock = false;
+  let selectedMenuIndex = 0;
+  let selectedEndIndex = 0;
+  let selectedPauseIndex = 0;
+  let hasActivatedFullscreenFromStart = false;
+  let mobileFullscreenPrimed = false;
+  let gamepadStatus = "NO GAMEPAD";
+  let waitingForFirstMove = false;
+
+  let dots = [];
+  let powers = [];
+  let player = null;
+  let enemies = [];
+
+  function safeCell(c, r) {
+    if (r < 0 || r >= ROWS || c < 0 || c >= COLS) return "#";
+    return layout[r].charAt(c);
+  }
+
+  function isWall(c, r) {
+    return safeCell(c, r) === "#";
+  }
+
+  function tileX(c) {
+    return MAZE_X + c * TILE + TILE / 2;
+  }
+
+  function tileY(r) {
+    return MAZE_Y + r * TILE + TILE / 2;
+  }
+
+  function findMarker(marker, fallbackC, fallbackR) {
+    for (let r = 0; r < ROWS; r++) {
+      for (let c = 0; c < COLS; c++) {
+        if (safeCell(c, r) === marker) return { c, r };
+      }
+    }
+    return { c: fallbackC, r: fallbackR };
+  }
+
+  function makeGrid(defaultValue) {
+    const grid = [];
+    for (let r = 0; r < ROWS; r++) {
+      grid[r] = [];
+      for (let c = 0; c < COLS; c++) grid[r][c] = defaultValue;
+    }
+    return grid;
+  }
+
+  function resetCollectibles() {
+    dots = makeGrid(false);
+    powers = makeGrid(false);
+    dotsLeft = 0;
+
+    for (let r = 0; r < ROWS; r++) {
+      for (let c = 0; c < COLS; c++) {
+        const ch = safeCell(c, r);
+        if (ch === ".") {
+          dots[r][c] = true;
+          dotsLeft++;
+        } else if (ch === "o") {
+          powers[r][c] = true;
+          dotsLeft++;
+        }
+      }
+    }
+  }
+
+  function initPlayer() {
+    const p = findMarker("P", 10, 9);
+    player = {
+      c: p.c,
+      r: p.r,
+      x: tileX(p.c),
+      y: tileY(p.r),
+      dir: "none",
+      nextDir: "none",
+      moving: false,
+      targetC: p.c,
+      targetR: p.r,
+      speed: 215,
+      mouthTimer: 0,
+      facing: "left"
+    };
+  }
+
+  function makeEnemy(type, c, r, speed, color) {
+    return {
+      type,
+      c,
+      r,
+      homeC: c,
+      homeR: r,
+      x: tileX(c),
+      y: tileY(r),
+      dir: randomDir(),
+      moving: false,
+      targetC: c,
+      targetR: r,
+      speed,
+      color,
+      deadTimer: 0,
+      wobble: Math.random() * 10
+    };
+  }
+
+  function openNeighborCount(c, r) {
+    let count = 0;
+    if (!isWall(c + 1, r)) count++;
+    if (!isWall(c - 1, r)) count++;
+    if (!isWall(c, r + 1)) count++;
+    if (!isWall(c, r - 1)) count++;
+    return count;
+  }
+
+  function findSafeSpawn(c, r) {
+    if (!isWall(c, r) && openNeighborCount(c, r) > 0) {
+      return { c, r };
+    }
+
+    for (let radius = 1; radius < 8; radius++) {
+      for (let rr = r - radius; rr <= r + radius; rr++) {
+        for (let cc = c - radius; cc <= c + radius; cc++) {
+          if (!isWall(cc, rr) && openNeighborCount(cc, rr) > 0) {
+            return { c: cc, r: rr };
+          }
+        }
+      }
+    }
+
+    return { c: 1, r: 1 };
+  }
+
+  function initEnemies() {
+    const bRaw = findMarker("B", 12, 5);
+    const b = findSafeSpawn(bRaw.c, bRaw.r);
+
+    // Difficulty ramp:
+    // Level 1 should feel like an introduction.
+    // Around levels 4-5 it reaches the difficulty of the earlier prototype.
+    const base = 70 + level * 9;
+
+    enemies = [];
+
+    const spawnA = findSafeSpawn(b.c, b.r);
+    const spawnB = findSafeSpawn(b.c - 1, b.r);
+    const spawnC = findSafeSpawn(b.c + 1, b.r);
+    const spawnD = findSafeSpawn(b.c, b.r + 1);
+
+    enemies.push(makeEnemy("cloud", spawnA.c, spawnA.r, base * 0.82, "#c8f8ff"));
+    enemies.push(makeEnemy("skull", spawnB.c, spawnB.r, base * 0.88, "#f5f5f5"));
+
+    if (level >= 3) {
+      enemies.push(makeEnemy("buzzkill", spawnC.c, spawnC.r, base * 0.98, "#b655ff"));
+    }
+
+    if (level >= 5) {
+      enemies.push(makeEnemy("cloud", spawnD.c, spawnD.r, base * 0.84, "#83fbff"));
+    }
+  }
+
+  function selectLevelLayout() {
+    layout = levelLayouts[(level - 1) % levelLayouts.length];
+  }
+
+  function loadLevel() {
+    selectLevelLayout();
+    resetCollectibles();
+    initPlayer();
+    initEnemies();
+    powerTimer = 0;
+    messageTimer = 115;
+    waitingForFirstMove = true;
+  }
+
+  async function enterFullscreenAndLandscape() {
+    const shell = document.getElementById("gameShell");
+
+    try {
+      if (!document.fullscreenElement && shell.requestFullscreen) {
+        await shell.requestFullscreen();
+      } else if (!document.webkitFullscreenElement && shell.webkitRequestFullscreen) {
+        shell.webkitRequestFullscreen();
+      }
+    } catch (err) {
+      // Some mobile browsers only allow fullscreen in certain contexts. The game still works without it.
+    }
+
+    try {
+      if (screen.orientation && screen.orientation.lock) {
+        await screen.orientation.lock("landscape");
+      }
+    } catch (err) {
+      // Orientation lock is not supported everywhere. The rotate screen handles this visually.
+    }
+  }
+
+
+  function isCoarsePointerDevice() {
+    return window.matchMedia && window.matchMedia("(hover: none), (pointer: coarse)").matches;
+  }
+
+  function isLandscapeNow() {
+    return window.innerWidth > window.innerHeight;
+  }
+
+  function isFullscreenNow() {
+    return !!document.fullscreenElement || !!document.webkitFullscreenElement;
+  }
+
+  function updateMobileFullscreenPrompt() {
+    if (!isCoarsePointerDevice()) {
+      fullscreenPrompt.classList.remove("visible");
+      return;
+    }
+
+    if (isLandscapeNow() && !isFullscreenNow() && gameState === "start") {
+      fullscreenPrompt.classList.add("visible");
+    } else {
+      fullscreenPrompt.classList.remove("visible");
+    }
+  }
+
+  async function requestMobileFullscreenFromTap() {
+    mobileFullscreenPrimed = true;
+
+    try {
+      const shell = document.getElementById("gameShell");
+      if (!isFullscreenNow() && shell.requestFullscreen) {
+        await shell.requestFullscreen();
+      } else if (!isFullscreenNow() && shell.webkitRequestFullscreen) {
+        shell.webkitRequestFullscreen();
+      }
+    } catch (err) {
+      // Some mobile browsers still refuse fullscreen, but the game remains playable.
+    }
+
+    try {
+      if (screen.orientation && screen.orientation.lock) {
+        await screen.orientation.lock("landscape");
+      }
+    } catch (err) {
+      // Ignore if not supported.
+    }
+
+    fullscreenPrompt.classList.remove("visible");
+  }
+
+
+  async function attemptFullscreenOnLoad() {
+    // Browsers usually block this without a user gesture, but we try anyway.
+    // If blocked, the existing Tap to Play overlay handles fullscreen reliably.
+    try {
+      const shell = document.getElementById("gameShell");
+      if (!isFullscreenNow() && shell.requestFullscreen) {
+        await shell.requestFullscreen();
+      } else if (!isFullscreenNow() && shell.webkitRequestFullscreen) {
+        shell.webkitRequestFullscreen();
+      }
+    } catch (err) {
+      // Expected on most browsers. User gesture fallback remains available.
+    }
+
+    try {
+      if (screen.orientation && screen.orientation.lock) {
+        await screen.orientation.lock("landscape");
+      }
+    } catch (err) {
+      // Expected on many browsers unless fullscreen is already active.
+    }
+
+    setTimeout(updateMobileFullscreenPrompt, 250);
+  }
+
+  async function primeStartScreenFullscreen() {
+    if (hasActivatedFullscreenFromStart) return;
+    hasActivatedFullscreenFromStart = true;
+
+    if (isCoarsePointerDevice()) {
+      mobileFullscreenPrimed = true;
+      if (isLandscapeNow()) {
+        await requestMobileFullscreenFromTap();
+      } else {
+        updateMobileFullscreenPrompt();
+      }
+      return;
+    }
+
+    await enterFullscreenAndLandscape();
+  }
+
+  function startGame() {
+    hidePauseMenu();
+    startScreen.classList.add("hidden");
+    selectScreen.classList.add("hidden");
+    endScreen.classList.add("hidden");
+    score = 0;
+    level = 1;
+    lives = 3;
+    loadLevel();
+    gameState = "playing";
+  }
+
+  function resetRound() {
+    initPlayer();
+    initEnemies();
+    powerTimer = 0;
+    waitingForFirstMove = true;
+  }
+
+  function canMoveFrom(c, r, dirName) {
+    const d = dirs[dirName];
+    if (!d) return false;
+    return !isWall(c + d.dc, r + d.dr);
+  }
+
+  function startMove(entity, dirName) {
+    if (!canMoveFrom(entity.c, entity.r, dirName)) return false;
+
+    const d = dirs[dirName];
+    entity.dir = dirName;
+
+    if (entity === player) {
+      entity.facing = dirName;
+    }
+
+    entity.targetC = entity.c + d.dc;
+    entity.targetR = entity.r + d.dr;
+    entity.moving = true;
+    return true;
+  }
+
+  function updateMover(entity, dt) {
+    if (!entity.moving) return;
+
+    const targetX = tileX(entity.targetC);
+    const targetY = tileY(entity.targetR);
+    const dx = targetX - entity.x;
+    const dy = targetY - entity.y;
+    const dist = Math.hypot(dx, dy);
+    const step = entity.speed * dt;
+
+    if (dist <= step || dist < 0.5) {
+      entity.x = targetX;
+      entity.y = targetY;
+      entity.c = entity.targetC;
+      entity.r = entity.targetR;
+      entity.moving = false;
+      return;
+    }
+
+    entity.x += (dx / dist) * step;
+    entity.y += (dy / dist) * step;
+  }
+
+  function eatAtPlayerTile() {
+    if (!player) return;
+
+    if (dots[player.r] && dots[player.r][player.c]) {
+      dots[player.r][player.c] = false;
+      dotsLeft--;
+      score += 10;
+    }
+
+    if (powers[player.r] && powers[player.r][player.c]) {
+      powers[player.r][player.c] = false;
+      dotsLeft--;
+      score += 50;
+      powerTimer = level <= 2 ? 10.5 : 8.5;
+    }
+
+    if (score > highScore) {
+      highScore = score;
+      localStorage.setItem("jncHappyHourHighScoreWideLanes", String(highScore));
+    }
+  }
+
+  function updatePlayer(dt) {
+    player.mouthTimer += dt * 12;
+
+    if (!player.moving) {
+      eatAtPlayerTile();
+
+      if (canMoveFrom(player.c, player.r, player.nextDir)) {
+        startMove(player, player.nextDir);
+      } else if (canMoveFrom(player.c, player.r, player.dir)) {
+        startMove(player, player.dir);
+      }
+    }
+
+    updateMover(player, dt);
+  }
+
+  function chooseEnemyDirection(enemy) {
+    const options = [];
+
+    ["left", "right", "up", "down"].forEach(function (dir) {
+      if (dir === opposite[enemy.dir]) return;
+      if (canMoveFrom(enemy.c, enemy.r, dir)) options.push(dir);
+    });
+
+    if (options.length === 0) {
+      ["left", "right", "up", "down"].forEach(function (dir) {
+        if (canMoveFrom(enemy.c, enemy.r, dir)) options.push(dir);
+      });
+    }
+
+    if (options.length === 0) return "none";
+
+    if (powerTimer > 0) {
+      options.sort(function (a, b) {
+        return distanceAfter(enemy, b) - distanceAfter(enemy, a);
+      });
+      return options[0];
+    }
+
+    const ramp = Math.min(1, (level - 1) / 4);
+
+    const cloudChase = 0.20 + ramp * 0.22;
+    const skullChase = 0.34 + ramp * 0.26;
+    const buzzkillChase = 0.52 + ramp * 0.30;
+
+    const chaseChance =
+      enemy.type === "buzzkill" ? buzzkillChase :
+      enemy.type === "skull" ? skullChase :
+      cloudChase;
+
+    if (Math.random() < chaseChance) {
+      options.sort(function (a, b) {
+        return distanceAfter(enemy, a) - distanceAfter(enemy, b);
+      });
+      return options[0];
+    }
+
+    return options[Math.floor(Math.random() * options.length)];
+  }
+
+  function distanceAfter(enemy, dirName) {
+    const d = dirs[dirName];
+    const nextX = tileX(enemy.c + d.dc);
+    const nextY = tileY(enemy.r + d.dr);
+    return Math.hypot(nextX - player.x, nextY - player.y);
+  }
+
+  function updateEnemies(dt) {
+    enemies.forEach(function (enemy) {
+      enemy.wobble += dt * 8;
+
+      if (enemy.deadTimer > 0) {
+        enemy.deadTimer -= dt;
+        if (enemy.deadTimer <= 0) {
+          enemy.c = enemy.homeC;
+          enemy.r = enemy.homeR;
+          enemy.x = tileX(enemy.c);
+          enemy.y = tileY(enemy.r);
+          enemy.moving = false;
+          enemy.dir = randomDir();
+        }
+        return;
+      }
+
+      if (!enemy.moving) {
+        const dir = chooseEnemyDirection(enemy);
+        startMove(enemy, dir);
+      }
+
+      const originalSpeed = enemy.speed;
+      if (powerTimer > 0) enemy.speed = originalSpeed * 0.68;
+      updateMover(enemy, dt);
+      enemy.speed = originalSpeed;
+    });
+  }
+
+  function checkCollisions() {
+    enemies.forEach(function (enemy) {
+      if (gameState !== "playing") return;
+      if (enemy.deadTimer > 0) return;
+
+      const dist = Math.hypot(player.x - enemy.x, player.y - enemy.y);
+
+      if (dist < 21) {
+        if (powerTimer > 0) {
+          score += 200;
+          enemy.deadTimer = 2.0;
+          enemy.moving = false;
+        } else {
+          lives--;
+          if (lives <= 0) {
+            endGame(false);
+          } else {
+            gameState = "hit";
+            setTimeout(function () {
+              resetRound();
+              gameState = "playing";
+            }, 650);
+          }
+        }
+      }
+    });
+  }
+
+  function update(dt) {
+    pollGamepad();
+    if (gameState !== "playing") return;
+
+    frame++;
+    if (messageTimer > 0) messageTimer--;
+
+    if (waitingForFirstMove) {
+      return;
+    }
+
+    if (powerTimer > 0) powerTimer -= dt;
+
+    updatePlayer(dt);
+    updateEnemies(dt);
+    checkCollisions();
+
+    if (dotsLeft <= 0) {
+      if (level >= 8) {
+        endGame(true);
+      } else {
+        level++;
+        score += 500;
+        loadLevel();
+      }
+    }
+  }
+
+  function endGame(won) {
+    hidePauseMenu();
+    gameState = "ended";
+    endScreen.classList.remove("hidden");
+
+    if (won) {
+      endTitle.textContent = "HAPPY HOUR HERO!";
+      endCopy.innerHTML = "You cleared all 8 levels of the Legendary JNC Lounge.<br><br>Final Score: <strong>" + score + "</strong>";
+    } else {
+      endTitle.textContent = "LAST CALL!";
+      endCopy.innerHTML = "The hangovers, skulls, and buzzkills caught up with you.<br><br>Final Score: <strong>" + score + "</strong><br>Level Reached: <strong>" + level + "</strong>";
+    }
+  }
+
+  function draw() {
+    drawBackground();
+    drawHeader();
+    drawMaze();
+    drawCollectibles();
+    drawEnemies();
+    drawPlayer();
+    drawFooter();
+
+    if ((messageTimer > 0 || waitingForFirstMove) && gameState === "playing") drawLevelMessage();
+    // Pause menu is handled by HTML overlay.
+    if (gameState === "hit") drawHit();
+  }
+
+  function drawBackground() {
+    ctx.fillStyle = "#04010a";
+    ctx.fillRect(0, 0, W, H);
+
+    const bg = ctx.createLinearGradient(0, 0, 0, H);
+    bg.addColorStop(0, "#171035");
+    bg.addColorStop(0.45, "#060414");
+    bg.addColorStop(1, "#020007");
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, W, H);
+
+    ctx.strokeStyle = "rgba(255,204,51,.45)";
+    ctx.lineWidth = 3;
+    ctx.strokeRect(13, 13, W - 26, H - 26);
+
+    ctx.strokeStyle = "rgba(64,245,255,.18)";
+    ctx.strokeRect(22, 22, W - 44, H - 44);
+  }
+
+  function drawHeader() {
+    ctx.save();
+
+    ctx.textAlign = "center";
+    ctx.fillStyle = "#ffcc33";
+    ctx.shadowColor = "#7327ff";
+    ctx.shadowBlur = 9;
+    ctx.font = "900 34px Arial";
+    ctx.fillText("JNC HAPPY HOUR", W / 2, 42);
+
+    ctx.shadowBlur = 0;
+    ctx.font = "900 13px Arial";
+    ctx.fillStyle = "#78fbff";
+    ctx.fillText("RETRO ARCADE LOUNGE MAZE", W / 2, 62);
+
+    ctx.font = "900 18px Arial";
+    ctx.fillStyle = "#ffffff";
+    ctx.textAlign = "left";
+    ctx.fillText("SCORE " + score, 36, 60);
+
+    ctx.textAlign = "right";
+    ctx.fillText("HIGH " + highScore, W - 36, 60);
+
+    ctx.restore();
+  }
+
+  function drawFooter() {
+    ctx.save();
+
+    ctx.textAlign = "left";
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "900 18px Arial";
+    ctx.fillText("LIVES", 36, 516);
+
+    for (let i = 0; i < lives; i++) {
+      drawMiniChomper(112 + i * 30, 510);
+    }
+
+    ctx.textAlign = "center";
+    ctx.fillStyle = powerTimer > 0 ? "#ffcc33" : "#78fbff";
+    ctx.font = "900 18px Arial";
+    ctx.fillText(powerTimer > 0 ? "POWER SHOT!" : characters[selectedCharacter].name + "  •  LEVEL " + level + "/8", W / 2, 516);
+
+    ctx.textAlign = "right";
+    ctx.fillStyle = "#ffffff";
+    ctx.fillText("DOTS " + dotsLeft, W - 36, 516);
+
+    ctx.restore();
+  }
+
+  function drawMaze() {
+    ctx.save();
+
+    for (let r = 0; r < ROWS; r++) {
+      for (let c = 0; c < COLS; c++) {
+        if (!isWall(c, r)) continue;
+
+        const x = MAZE_X + c * TILE;
+        const y = MAZE_Y + r * TILE;
+
+        ctx.fillStyle = "#100733";
+        ctx.fillRect(x, y, TILE, TILE);
+
+        ctx.shadowColor = "#2538ff";
+        ctx.shadowBlur = 10;
+        ctx.strokeStyle = "#263dff";
+        ctx.lineWidth = 3;
+        ctx.strokeRect(x + 3, y + 3, TILE - 6, TILE - 6);
+
+        ctx.shadowBlur = 0;
+        ctx.strokeStyle = "rgba(68,255,255,.35)";
+        ctx.lineWidth = 1;
+        ctx.strokeRect(x + 8, y + 8, TILE - 16, TILE - 16);
+      }
+    }
+
+    ctx.restore();
+  }
+
+  function drawCollectibles() {
+    if (!dots.length || !powers.length) return;
+
+    for (let r = 0; r < ROWS; r++) {
+      for (let c = 0; c < COLS; c++) {
+        const x = tileX(c);
+        const y = tileY(r);
+
+        if (powers[r] && powers[r][c]) drawPowerShot(x, y);
+        else if (dots[r] && dots[r][c]) drawCollectible(x, y);
+      }
+    }
+  }
+
+  function drawCollectible(x, y) {
+    const item = characters[selectedCharacter].item;
+
+    ctx.save();
+    ctx.shadowColor = characters[selectedCharacter].color;
+    ctx.shadowBlur = 6;
+
+    if (item === "scotch") {
+      ctx.fillStyle = "#d47a28";
+      ctx.fillRect(x - 5, y - 1, 10, 8);
+      ctx.strokeStyle = "#fff";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(x - 7, y - 8, 14, 17);
+    }
+
+    if (item === "espresso") {
+      ctx.strokeStyle = "#fff";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(x, y + 9);
+      ctx.lineTo(x - 10, y - 7);
+      ctx.lineTo(x + 10, y - 7);
+      ctx.closePath();
+      ctx.stroke();
+      ctx.fillStyle = "#5c3016";
+      ctx.beginPath();
+      ctx.arc(x, y - 2, 5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    if (item === "beer") {
+      // Tiny frosty beer mug.
+      ctx.fillStyle = "#f5b642";
+      ctx.fillRect(x - 7, y - 4, 12, 12);
+
+      ctx.fillStyle = "#fff6d5";
+      ctx.fillRect(x - 7, y - 9, 12, 5);
+      ctx.beginPath();
+      ctx.arc(x - 6, y - 9, 3, 0, Math.PI * 2);
+      ctx.arc(x - 1, y - 10, 3, 0, Math.PI * 2);
+      ctx.arc(x + 4, y - 9, 3, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.strokeStyle = "#ffffff";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(x - 8, y - 9, 14, 18);
+
+      ctx.beginPath();
+      ctx.arc(x + 8, y, 5, -Math.PI / 2, Math.PI / 2);
+      ctx.stroke();
+    }
+
+    if (item === "tropical") {
+      // Tiny tropical drink with umbrella.
+      ctx.strokeStyle = "#ffffff";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(x - 9, y - 6);
+      ctx.lineTo(x + 9, y - 6);
+      ctx.lineTo(x + 4, y + 10);
+      ctx.lineTo(x - 4, y + 10);
+      ctx.closePath();
+      ctx.stroke();
+
+      ctx.fillStyle = "#ff7a1a";
+      ctx.beginPath();
+      ctx.moveTo(x - 7, y - 4);
+      ctx.lineTo(x + 7, y - 4);
+      ctx.lineTo(x + 3, y + 8);
+      ctx.lineTo(x - 3, y + 8);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.strokeStyle = "#ffcc33";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(x + 3, y - 7);
+      ctx.lineTo(x + 8, y - 17);
+      ctx.stroke();
+
+      ctx.fillStyle = "#ff4bd8";
+      ctx.beginPath();
+      ctx.moveTo(x + 8, y - 17);
+      ctx.lineTo(x + 18, y - 14);
+      ctx.lineTo(x + 10, y - 10);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.fillStyle = "#39ff72";
+      ctx.fillRect(x - 2, y - 10, 4, 3);
+    }
+
+    if (item === "strawberry") {
+      ctx.fillStyle = "#ff3347";
+      ctx.beginPath();
+      ctx.moveTo(x, y + 10);
+      ctx.bezierCurveTo(x - 11, y, x - 8, y - 10, x, y - 5);
+      ctx.bezierCurveTo(x + 8, y - 10, x + 11, y, x, y + 10);
+      ctx.fill();
+      ctx.fillStyle = "#6dff77";
+      ctx.fillRect(x - 5, y - 12, 10, 5);
+    }
+
+    if (item === "shaker") {
+      ctx.fillStyle = "#bffaff";
+      ctx.fillRect(x - 7, y - 7, 14, 16);
+      ctx.fillStyle = "#fff";
+      ctx.fillRect(x - 4, y - 14, 8, 7);
+      ctx.strokeStyle = "#fff";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(x - 7, y - 7, 14, 16);
+    }
+
+    ctx.restore();
+  }
+
+  function drawPowerShot(x, y) {
+    const pulse = Math.sin(frame * .16) * 2;
+
+    ctx.save();
+    ctx.shadowColor = "#ffcc33";
+    ctx.shadowBlur = 18;
+
+    ctx.fillStyle = "#fff3a8";
+    ctx.beginPath();
+    ctx.arc(x, y, 11 + pulse, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = "#ff9d16";
+    ctx.fillRect(x - 6, y - 3, 12, 10);
+
+    ctx.strokeStyle = "#fff";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(x - 7, y - 12, 14, 21);
+
+    ctx.restore();
+  }
+
+  function drawPlayer() {
+    if (!player) return;
+
+    if (selectedCharacter === "brad" && spriteReady(bradFrame1, bradFrame2)) {
+      drawUprightSprite(bradFrame1, bradFrame2, 58);
+      return;
+    }
+
+    if (selectedCharacter === "jordy" && spriteReady(jordyFrame1, jordyFrame2)) {
+      drawUprightSprite(jordyFrame1, jordyFrame2, 58);
+      return;
+    }
+
+    if (selectedCharacter === "elly" && spriteReady(ellyFrame1, ellyFrame2)) {
+      drawUprightSprite(ellyFrame1, ellyFrame2, 58);
+      return;
+    }
+
+    if (selectedCharacter === "derek" && spriteReady(derekFrame1, derekFrame2)) {
+      drawUprightSprite(derekFrame1, derekFrame2, 58);
+      return;
+    }
+
+    drawFallbackChomper(player.x, player.y, characters[selectedCharacter].color, player.facing || player.dir, 17, player.moving);
+    drawAccessory(player.x, player.y);
+  }
+
+  function spriteReady(img1, img2) {
+    return img1.complete && img2.complete && img1.naturalWidth > 0 && img2.naturalWidth > 0;
+  }
+
+  function drawUprightSprite(frameA, frameB, size) {
+    const img = player.moving
+      ? (Math.floor(player.mouthTimer) % 2 === 0 ? frameA : frameB)
+      : frameA;
+
+    const facing = player.facing || "right";
+
+    ctx.save();
+    ctx.translate(player.x, player.y);
+
+    if (facing === "left") {
+      ctx.scale(-1, 1);
+    } else if (facing === "up") {
+      ctx.rotate(-Math.PI / 2);
+    } else if (facing === "down") {
+      ctx.rotate(Math.PI / 2);
+    }
+
+    ctx.drawImage(img, -size / 2, -size / 2, size, size);
+    ctx.restore();
+  }
+
+  function drawFallbackChomper(x, y, color, dir, radius, isMoving = true) {
+    let angle = 0;
+    if (dir === "left") angle = Math.PI;
+    if (dir === "up") angle = -Math.PI / 2;
+    if (dir === "down") angle = Math.PI / 2;
+
+    const mouth = isMoving
+      ? (.28 + Math.abs(Math.sin(frame * .22)) * .55)
+      : .28;
+
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(angle);
+    ctx.fillStyle = color;
+    ctx.shadowColor = color;
+    ctx.shadowBlur = 13;
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.arc(0, 0, radius, mouth, Math.PI * 2 - mouth);
+    ctx.closePath();
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = "#000";
+    ctx.beginPath();
+    ctx.arc(4, -7, 2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function drawAccessory(x, y) {
+    ctx.save();
+
+    if (selectedCharacter === "brad") {
+      ctx.fillStyle = "#111";
+      ctx.fillRect(x - 15, y - 20, 30, 6);
+      ctx.fillRect(x - 10, y - 28, 20, 10);
+      ctx.fillStyle = "#ffee32";
+      ctx.fillRect(x - 12, y - 10, 10, 6);
+      ctx.fillRect(x + 2, y - 10, 10, 6);
+    }
+
+    if (selectedCharacter === "jordy") {
+      ctx.strokeStyle = "#111";
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.arc(x - 8, y - 8, 6, 0, Math.PI * 2);
+      ctx.arc(x + 8, y - 8, 6, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
+    if (selectedCharacter === "elly") {
+      ctx.fillStyle = "#fff";
+      drawHeart(x - 8, y - 8, 5);
+      drawHeart(x + 8, y - 8, 5);
+    }
+
+    if (selectedCharacter === "derek") {
+      ctx.fillStyle = "#fff";
+      ctx.fillRect(x - 15, y - 23, 30, 9);
+      ctx.fillStyle = "#49eaff";
+      ctx.fillRect(x - 10, y - 31, 20, 8);
+      ctx.fillStyle = "#ffcc33";
+      ctx.fillRect(x - 2, y - 31, 4, 8);
+    }
+
+    ctx.restore();
+  }
+
+  function drawHeart(x, y, s) {
+    ctx.beginPath();
+    ctx.moveTo(x, y + s);
+    ctx.bezierCurveTo(x - s * 2, y - s, x - s, y - s * 2, x, y - s);
+    ctx.bezierCurveTo(x + s, y - s * 2, x + s * 2, y - s, x, y + s);
+    ctx.fill();
+  }
+
+  function drawEnemies() {
+    enemies.forEach(function (enemy) {
+      if (enemy.deadTimer > 0) {
+        drawEnemyEyes(enemy.x, enemy.y);
+        return;
+      }
+
+      if (enemy.type === "cloud") drawCloud(enemy);
+      if (enemy.type === "skull") drawSkull(enemy);
+      if (enemy.type === "buzzkill") drawBuzzkill(enemy);
+    });
+  }
+
+  function enemyColor(enemy) {
+    return powerTimer > 0 ? "#2457ff" : enemy.color;
+  }
+
+  function drawCloud(enemy) {
+    ctx.save();
+    ctx.translate(enemy.x, enemy.y + Math.sin(enemy.wobble) * 2.2);
+    ctx.fillStyle = enemyColor(enemy);
+    ctx.shadowColor = enemyColor(enemy);
+    ctx.shadowBlur = 13;
+    ctx.beginPath();
+    ctx.arc(-10, 0, 10, 0, Math.PI * 2);
+    ctx.arc(2, -8, 14, 0, Math.PI * 2);
+    ctx.arc(13, 0, 10, 0, Math.PI * 2);
+    ctx.rect(-17, 0, 34, 13);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    drawEnemyFace(0, 0);
+    ctx.restore();
+  }
+
+  function drawSkull(enemy) {
+    ctx.save();
+    ctx.translate(enemy.x, enemy.y);
+    ctx.rotate(enemy.wobble * .035);
+    ctx.fillStyle = enemyColor(enemy);
+    ctx.shadowColor = enemyColor(enemy);
+    ctx.shadowBlur = 13;
+    ctx.beginPath();
+    ctx.arc(0, -7, 15, 0, Math.PI * 2);
+    ctx.fillRect(-10, 4, 20, 16);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    drawEnemyFace(0, 0);
+    ctx.restore();
+  }
+
+  function drawBuzzkill(enemy) {
+    ctx.save();
+    ctx.translate(enemy.x, enemy.y);
+    ctx.fillStyle = enemyColor(enemy);
+    ctx.shadowColor = enemyColor(enemy);
+    ctx.shadowBlur = 13;
+    ctx.beginPath();
+    ctx.moveTo(0, -19);
+    ctx.lineTo(17, -4);
+    ctx.lineTo(13, 15);
+    ctx.lineTo(0, 21);
+    ctx.lineTo(-13, 15);
+    ctx.lineTo(-17, -4);
+    ctx.closePath();
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = "#ffcc33";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(-7, -15);
+    ctx.lineTo(-15, -26);
+    ctx.moveTo(7, -15);
+    ctx.lineTo(15, -26);
+    ctx.stroke();
+    drawEnemyFace(0, 0);
+    ctx.restore();
+  }
+
+  function drawEnemyFace(x, y) {
+    ctx.fillStyle = "#000";
+    ctx.beginPath();
+    ctx.arc(x - 6, y - 5, 3, 0, Math.PI * 2);
+    ctx.arc(x + 6, y - 5, 3, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.strokeStyle = "#000";
+    ctx.lineWidth = 2.3;
+    ctx.beginPath();
+    ctx.moveTo(x - 8, y + 8);
+    ctx.quadraticCurveTo(x, y + 3, x + 8, y + 8);
+    ctx.stroke();
+  }
+
+  function drawEnemyEyes(x, y) {
+    ctx.save();
+    ctx.fillStyle = "#fff";
+    ctx.beginPath();
+    ctx.arc(x - 6, y - 2, 5, 0, Math.PI * 2);
+    ctx.arc(x + 6, y - 2, 5, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = "#009dff";
+    ctx.beginPath();
+    ctx.arc(x - 4, y - 2, 2.4, 0, Math.PI * 2);
+    ctx.arc(x + 8, y - 2, 2.4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function drawMiniChomper(x, y) {
+    drawFallbackChomper(x, y, characters[selectedCharacter].color, "right", 12);
+  }
+
+  function drawLevelMessage() {
+    ctx.save();
+    ctx.fillStyle = "rgba(0,0,0,.78)";
+    ctx.fillRect(W / 2 - 160, H / 2 - 56, 320, 112);
+    ctx.strokeStyle = "#ffcc33";
+    ctx.lineWidth = 3;
+    ctx.strokeRect(W / 2 - 160, H / 2 - 56, 320, 112);
+
+    ctx.textAlign = "center";
+    ctx.fillStyle = "#00ffff";
+    ctx.font = "900 32px Arial";
+    ctx.fillText("LEVEL " + level + "  •  MAZE " + (((level - 1) % levelLayouts.length) + 1), W / 2, H / 2 - 14);
+
+    ctx.fillStyle = "#ffff00";
+    ctx.font = "900 30px Arial";
+    ctx.fillText(waitingForFirstMove ? "PRESS A DIRECTION!" : "READY!", W / 2, H / 2 + 30);
+    ctx.restore();
+  }
+
+  function drawPause() {
+    ctx.save();
+    ctx.fillStyle = "rgba(0,0,0,.7)";
+    ctx.fillRect(0, 0, W, H);
+    ctx.textAlign = "center";
+    ctx.fillStyle = "#ffcc33";
+    ctx.font = "900 48px Arial";
+    ctx.fillText("PAUSED", W / 2, H / 2 - 8);
+    ctx.fillStyle = "#fff";
+    ctx.font = "18px Arial";
+    ctx.fillText("Press pause, space, enter, or start", W / 2, H / 2 + 28);
+    ctx.restore();
+  }
+
+  function drawHit() {
+    ctx.save();
+    ctx.fillStyle = "rgba(255,45,45,.22)";
+    ctx.fillRect(0, 0, W, H);
+    ctx.textAlign = "center";
+    ctx.fillStyle = "#ffcc33";
+    ctx.font = "900 40px Arial";
+    ctx.fillText("OUCH!", W / 2, H / 2 - 6);
+    ctx.fillStyle = "#fff";
+    ctx.font = "18px Arial";
+    ctx.fillText("The bad vibes got you.", W / 2, H / 2 + 28);
+    ctx.restore();
+  }
+
+  function randomDir() {
+    const choices = ["left", "right", "up", "down"];
+    return choices[Math.floor(Math.random() * choices.length)];
+  }
+
+  function changeDirection(dir) {
+    if (!player) return;
+    if (!dirs[dir] || dir === "none") return;
+
+    player.nextDir = dir;
+    player.facing = dir;
+
+    if (gameState === "playing" && waitingForFirstMove) {
+      waitingForFirstMove = false;
+      player.dir = dir;
+    }
+  }
+
+  function updatePauseStats() {
+    pauseScore.textContent = score;
+    pauseHigh.textContent = highScore;
+    pauseLevel.textContent = level + "/8";
+    pauseLives.textContent = lives;
+    pauseDots.textContent = dotsLeft;
+    pauseCharacter.textContent = characters[selectedCharacter].name;
+  }
+
+  function getPauseButtons() {
+    return [resumeGameBtn, restartGameBtn, quitGameBtn];
+  }
+
+  function updatePauseSelection(index) {
+    const buttons = getPauseButtons();
+    const maxIndex = buttons.length - 1;
+    selectedPauseIndex = Math.max(0, Math.min(maxIndex, index));
+
+    buttons.forEach(function (btn, i) {
+      btn.classList.toggle("selected", i === selectedPauseIndex);
+    });
+  }
+
+  function activatePauseSelection() {
+    if (selectedPauseIndex === 0) {
+      if (gameState === "paused") togglePause();
+      return;
+    }
+
+    if (selectedPauseIndex === 1) {
+      restartCurrentLevel();
+      return;
+    }
+
+    if (selectedPauseIndex === 2) {
+      quitToTitle();
+    }
+  }
+
+  function showPauseMenu() {
+    updatePauseStats();
+    updatePauseSelection(0);
+    pauseMoveLock = false;
+    pauseSelectLock = false;
+    pauseMenu.classList.add("visible");
+  }
+
+  function hidePauseMenu() {
+    pauseMoveLock = false;
+    pauseSelectLock = false;
+    pauseMenu.classList.remove("visible");
+  }
+
+  function togglePause() {
+    if (gameState === "playing") {
+      gameState = "paused";
+      showPauseMenu();
+    } else if (gameState === "paused") {
+      gameState = "playing";
+      hidePauseMenu();
+    }
+  }
+
+  function restartCurrentLevel() {
+    hidePauseMenu();
+    loadLevel();
+    gameState = "playing";
+  }
+
+  function quitToTitle() {
+    hidePauseMenu();
+    endScreen.classList.add("hidden");
+    selectScreen.classList.add("hidden");
+    startScreen.classList.remove("hidden");
+    gameState = "start";
+    waitingForFirstMove = false;
+    updateCharacterSelection(selectedMenuIndex);
+  }
+
+  function getActiveGamepad() {
+    if (!navigator.getGamepads) return null;
+
+    const pads = navigator.getGamepads();
+
+    for (let i = 0; i < pads.length; i++) {
+      if (pads[i]) return pads[i];
+    }
+
+    return null;
+  }
+
+  function buttonPressed(pad, indexes) {
+    for (let i = 0; i < indexes.length; i++) {
+      const button = pad.buttons[indexes[i]];
+      if (button && (button.pressed || button.value > 0.5)) return true;
+    }
+
+    return false;
+  }
+
+  function getGamepadDirection(pad) {
+    const dead = 0.35;
+
+    // Standard browser mapping:
+    // left stick axes 0/1, D-pad buttons 12/13/14/15
+    const dpadUp = buttonPressed(pad, [12]);
+    const dpadDown = buttonPressed(pad, [13]);
+    const dpadLeft = buttonPressed(pad, [14]);
+    const dpadRight = buttonPressed(pad, [15]);
+
+    if (dpadUp) return "up";
+    if (dpadDown) return "down";
+    if (dpadLeft) return "left";
+    if (dpadRight) return "right";
+
+    // Analog sticks and some generic USB controllers.
+    // Check common axis pairs: 0/1, 2/3, 4/5, 6/7.
+    const axisPairs = [
+      [0, 1],
+      [2, 3],
+      [4, 5],
+      [6, 7]
+    ];
+
+    for (let i = 0; i < axisPairs.length; i++) {
+      const x = pad.axes[axisPairs[i][0]] || 0;
+      const y = pad.axes[axisPairs[i][1]] || 0;
+
+      if (Math.abs(x) > Math.abs(y)) {
+        if (x < -dead) return "left";
+        if (x > dead) return "right";
+      } else {
+        if (y < -dead) return "up";
+        if (y > dead) return "down";
+      }
+    }
+
+    // Some SNES-style USB controllers report the D-pad as a single hat axis.
+    // We only treat values that are clearly away from neutral as a hat reading.
+    // Typical hat values are around:
+    // -1 up, -0.71 up/right, -0.43 right, -0.14 down/right,
+    //  0.14 down, 0.43 down/left, 0.71 left, 1 up/left
+    // Neutral on many controllers is exactly 0, so we must NOT treat near-zero as "down".
+    for (let i = 0; i < pad.axes.length; i++) {
+      const v = pad.axes[i];
+
+      // Ignore likely neutral axes.
+      if (Math.abs(v) < 0.08) continue;
+
+      if (v <= -0.90) return "up";
+      if (v > -0.90 && v <= -0.57) return "up";
+      if (v > -0.57 && v <= -0.28) return "right";
+      if (v > -0.28 && v <= 0.28) return "down";
+      if (v > 0.28 && v <= 0.57) return "left";
+      if (v > 0.57 && v <= 0.90) return "up";
+      if (v > 0.90) return "up";
+    }
+
+    return null;
+  }
+
+  function isAnyMenuOpen() {
+    return gameState === "start" || gameState === "select" || gameState === "ended";
+  }
+
+  function handleMenuDirection(direction) {
+    if (gameState === "select") {
+      if (direction === "left") updateCharacterSelection(selectedMenuIndex - 1);
+      if (direction === "right") updateCharacterSelection(selectedMenuIndex + 1);
+      if (direction === "up") updateCharacterSelection(selectedMenuIndex - 2);
+      if (direction === "down") updateCharacterSelection(selectedMenuIndex + 2);
+    }
+
+    if (gameState === "ended") {
+      selectedEndIndex = 0;
+    }
+  }
+
+  async function showCharacterSelect() {
+    errorBox.style.display = "none";
+    await primeStartScreenFullscreen();
+    fullscreenPrompt.classList.remove("visible");
+    startScreen.classList.add("hidden");
+    selectScreen.classList.remove("hidden");
+    gameState = "select";
+    updateCharacterSelection(selectedMenuIndex);
+  }
+
+  async function activateCurrentMenuItem() {
+    if (gameState === "start") {
+      await showCharacterSelect();
+      return;
+    }
+
+    if (gameState === "select") {
+      errorBox.style.display = "none";
+      selectScreen.classList.add("hidden");
+      startGame();
+      return;
+    }
+
+    if (gameState === "ended") {
+      endScreen.classList.add("hidden");
+      startScreen.classList.remove("hidden");
+      selectScreen.classList.add("hidden");
+      gameState = "start";
+      updateCharacterSelection(selectedMenuIndex);
+    }
+  }
+
+  function pollGamepad() {
+    const pad = getActiveGamepad();
+
+    if (!pad) {
+      gamepadStatus = "NO GAMEPAD";
+      return;
+    }
+
+    gamepadStatus = "GAMEPAD OK: " + (pad.id ? pad.id.substring(0, 23) : "CONNECTED");
+
+    const direction = getGamepadDirection(pad);
+    const hasDirection = !!direction;
+
+    const selectPressed = buttonPressed(pad, [0, 1, 2, 3, 8, 9, 10, 11, 7]);
+
+    if (isAnyMenuOpen()) {
+      if (gameState === "start" && (hasDirection || selectPressed)) {
+        primeStartScreenFullscreen();
+      }
+
+      if (gameState === "select" && hasDirection && !menuMoveLock) {
+        menuMoveLock = true;
+        handleMenuDirection(direction);
+      }
+
+      if (!hasDirection) menuMoveLock = false;
+
+      if (selectPressed && !menuSelectLock) {
+        menuSelectLock = true;
+        activateCurrentMenuItem();
+      }
+
+      if (!selectPressed) menuSelectLock = false;
+
+      return;
+    }
+
+    if (gameState === "paused") {
+      const pauseStartPressed = buttonPressed(pad, [8, 9, 10, 11, 7]);
+      const pauseConfirmPressed = buttonPressed(pad, [0, 1, 2, 3]);
+
+      // Important: if the same Start/Select/Menu button opened the pause menu,
+      // do not let it instantly select RESUME before the button is released.
+      if (pauseLock && pauseStartPressed) {
+        return;
+      }
+
+      if (!pauseStartPressed) {
+        pauseLock = false;
+      }
+
+      if ((direction === "up" || direction === "left") && !pauseMoveLock) {
+        pauseMoveLock = true;
+        updatePauseSelection(selectedPauseIndex - 1);
+      } else if ((direction === "down" || direction === "right") && !pauseMoveLock) {
+        pauseMoveLock = true;
+        updatePauseSelection(selectedPauseIndex + 1);
+      }
+
+      if (!direction) pauseMoveLock = false;
+
+      // A/B/X/Y confirm the highlighted pause option.
+      if (pauseConfirmPressed && !pauseSelectLock) {
+        pauseSelectLock = true;
+        activatePauseSelection();
+      }
+
+      // Start/Select/Menu resumes from pause, but only after the original press was released.
+      if (pauseStartPressed && !pauseSelectLock && !pauseLock) {
+        pauseSelectLock = true;
+        togglePause();
+      }
+
+      if (!pauseConfirmPressed && !pauseStartPressed) pauseSelectLock = false;
+
+      return;
+    }
+
+    if (direction) changeDirection(direction);
+
+    // Pause/start mapping: Start, Select, center/menu, right trigger fallback.
+    const startPressed = buttonPressed(pad, [8, 9, 10, 11, 7]);
+
+    if (startPressed && !pauseLock) {
+      pauseLock = true;
+
+      if (gameState === "playing" || gameState === "paused") {
+        togglePause();
+      }
+
+      // Stop this same button press from being processed again on the new pause menu.
+      return;
+    }
+
+    if (!startPressed) pauseLock = false;
+  }
+
+  window.addEventListener("gamepadconnected", function (event) {
+    gamepadStatus = "GAMEPAD: " + (event.gamepad.id ? event.gamepad.id.substring(0, 26) : "CONNECTED");
+  });
+
+  window.addEventListener("gamepaddisconnected", function () {
+    gamepadStatus = "NO GAMEPAD";
+  });
+
+  function updateCharacterSelection(index) {
+    const maxIndex = charBtns.length - 1;
+    selectedMenuIndex = Math.max(0, Math.min(maxIndex, index));
+
+    const btn = charBtns[selectedMenuIndex];
+    if (!btn) return;
+
+    selectedCharacter = btn.dataset.character;
+    charBtns.forEach(function (b) { b.classList.remove("selected"); });
+    btn.classList.add("selected");
+  }
+
+  charBtns.forEach(function (btn, index) {
+    btn.addEventListener("click", function () {
+      updateCharacterSelection(index);
+    });
+  });
+
+  titleStartBtn.addEventListener("click", async function (e) {
+    e.stopPropagation();
+    await showCharacterSelect();
+  });
+
+  startBtn.addEventListener("click", async function (e) {
+    e.stopPropagation();
+    errorBox.style.display = "none";
+    selectScreen.classList.add("hidden");
+    startGame();
+  });
+
+  rotateScreen.addEventListener("pointerdown", function () {
+    if (isCoarsePointerDevice()) {
+      mobileFullscreenPrimed = true;
+      updateMobileFullscreenPrompt();
+    }
+  });
+
+  rotateScreen.addEventListener("touchstart", function () {
+    if (isCoarsePointerDevice()) {
+      mobileFullscreenPrimed = true;
+      updateMobileFullscreenPrompt();
+    }
+  }, { passive: true });
+
+  startScreen.addEventListener("pointerdown", function (e) {
+    if (gameState === "start" && !e.target.closest("#titleStartBtn")) {
+      primeStartScreenFullscreen();
+    }
+  });
+
+  startScreen.addEventListener("touchstart", function () {
+    if (gameState === "start") {
+      primeStartScreenFullscreen();
+    }
+  }, { passive: true });
+
+  function handlePostRotateMaybeFullscreen() {
+    if (mobileFullscreenPrimed && isCoarsePointerDevice()) {
+      updateMobileFullscreenPrompt();
+    }
+  }
+
+  window.addEventListener("orientationchange", function () {
+    setTimeout(handlePostRotateMaybeFullscreen, 120);
+  });
+
+  window.addEventListener("resize", function () {
+    setTimeout(handlePostRotateMaybeFullscreen, 120);
+  });
+
+  document.addEventListener("fullscreenchange", updateMobileFullscreenPrompt);
+  document.addEventListener("webkitfullscreenchange", updateMobileFullscreenPrompt);
+
+  document.addEventListener("visibilitychange", function () {
+    if (!document.hidden) {
+      setTimeout(handlePostRotateMaybeFullscreen, 120);
+    }
+  });
+
+  fullscreenPrompt.addEventListener("pointerdown", async function () {
+    await requestMobileFullscreenFromTap();
+  });
+
+  fullscreenPrompt.addEventListener("touchstart", async function () {
+    await requestMobileFullscreenFromTap();
+  }, { passive: true });
+
+  restartBtn.addEventListener("click", function () {
+    endScreen.classList.add("hidden");
+    selectScreen.classList.add("hidden");
+    startScreen.classList.remove("hidden");
+    gameState = "start";
+    hasActivatedFullscreenFromStart = !!document.fullscreenElement;
+    mobileFullscreenPrimed = !!document.fullscreenElement;
+    updateCharacterSelection(selectedMenuIndex);
+  });
+
+  pauseBtn.addEventListener("click", togglePause);
+  resumeGameBtn.addEventListener("click", function () {
+    updatePauseSelection(0);
+    if (gameState === "paused") togglePause();
+  });
+  restartGameBtn.addEventListener("click", function () {
+    updatePauseSelection(1);
+    restartCurrentLevel();
+  });
+  quitGameBtn.addEventListener("click", function () {
+    updatePauseSelection(2);
+    quitToTitle();
+  });
+
+  document.querySelectorAll("[data-dir]").forEach(function (btn) {
+    btn.addEventListener("pointerdown", function (e) {
+      e.preventDefault();
+      changeDirection(btn.dataset.dir);
+    });
+  });
+
+  window.addEventListener("keydown", async function (e) {
+    const key = e.key.toLowerCase();
+
+    if (gameState === "start" || gameState === "select" || gameState === "ended") {
+      if (gameState === "start") {
+        await primeStartScreenFullscreen();
+      }
+
+      if (gameState === "select") {
+        if (key === "arrowleft" || key === "a") handleMenuDirection("left");
+        if (key === "arrowright" || key === "d") handleMenuDirection("right");
+        if (key === "arrowup" || key === "w") handleMenuDirection("up");
+        if (key === "arrowdown" || key === "s") handleMenuDirection("down");
+      }
+
+      if (key === " " || key === "enter") {
+        await activateCurrentMenuItem();
+      }
+
+      return;
+    }
+
+    if (gameState === "paused") {
+      if (key === "arrowup" || key === "w") updatePauseSelection(selectedPauseIndex - 1);
+      if (key === "arrowdown" || key === "s") updatePauseSelection(selectedPauseIndex + 1);
+
+      if (key === "r") restartCurrentLevel();
+      if (key === "q" || key === "escape") quitToTitle();
+
+      if (key === " " || key === "enter") {
+        activatePauseSelection();
+      } else if (key === "p") {
+        togglePause();
+      }
+
+      return;
+    }
+
+    if (key === "arrowleft" || key === "a") changeDirection("left");
+    if (key === "arrowright" || key === "d") changeDirection("right");
+    if (key === "arrowup" || key === "w") changeDirection("up");
+    if (key === "arrowdown" || key === "s") changeDirection("down");
+
+    if (key === " " || key === "enter" || key === "p") {
+      if (gameState === "playing" || gameState === "paused") togglePause();
+    }
+  });
+
+  let touchStartX = 0;
+  let touchStartY = 0;
+
+  canvas.addEventListener("touchstart", function (e) {
+    const t = e.changedTouches[0];
+    touchStartX = t.clientX;
+    touchStartY = t.clientY;
+  }, { passive: true });
+
+  canvas.addEventListener("touchend", function (e) {
+    const t = e.changedTouches[0];
+    const dx = t.clientX - touchStartX;
+    const dy = t.clientY - touchStartY;
+
+    if (Math.abs(dx) < 20 && Math.abs(dy) < 20) return;
+
+    if (Math.abs(dx) > Math.abs(dy)) changeDirection(dx > 0 ? "right" : "left");
+    else changeDirection(dy > 0 ? "down" : "up");
+  }, { passive: true });
+
+  function loop(time) {
+    const dt = Math.min((time - lastTime) / 1000, 0.05) || 0.016;
+    lastTime = time;
+    update(dt);
+    draw();
+    requestAnimationFrame(loop);
+  }
+
+  window.addEventListener("load", function () {
+    mobileFullscreenPrimed = true;
+    attemptFullscreenOnLoad();
+  });
+
+  document.addEventListener("DOMContentLoaded", function () {
+    mobileFullscreenPrimed = true;
+    setTimeout(attemptFullscreenOnLoad, 100);
+  });
+
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
