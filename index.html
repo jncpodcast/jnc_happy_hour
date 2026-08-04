@@ -2,8 +2,23 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="format-detection" content="telephone=no" />
+<link rel="preconnect" href="https://static.wixstatic.com" crossorigin />
+<link rel="dns-prefetch" href="//static.wixstatic.com" />
+<link rel="preload" as="image" href="https://static.wixstatic.com/media/7b5caa_d37c5e96f13c4876ad00c599079a5a30~mv2.jpg" fetchpriority="high" />
 <title>JNC Happy Hour - Wide Lanes + Jordy Sprites</title>
+
+<script>
+  (function () {
+    var platform = navigator.platform || "";
+    var appleMobile = /iPad|iPhone|iPod/.test(navigator.userAgent || "") ||
+      (platform === "MacIntel" && navigator.maxTouchPoints > 1);
+    if (appleMobile) document.documentElement.classList.add("is-ios");
+  })();
+</script>
 
 <style>
   * {
@@ -20,16 +35,29 @@
     color: white;
     overflow: hidden;
     touch-action: none;
+    overscroll-behavior: none;
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
   }
 
   body {
     display: flex;
     justify-content: center;
     align-items: center;
+    padding:
+      env(safe-area-inset-top, 0px)
+      env(safe-area-inset-right, 0px)
+      env(safe-area-inset-bottom, 0px)
+      env(safe-area-inset-left, 0px);
+  }
+
+  @supports (height: 100dvh) {
+    html, body { height: 100dvh; }
   }
 
   #gameShell {
-    width: min(100vw, 960px);
+    width: min(100%, 960px, 177.777778vh);
     aspect-ratio: 16 / 9;
     max-height: 100vh;
     position: relative;
@@ -41,6 +69,18 @@
       0 0 18px #ffcc33,
       0 0 44px rgba(128, 0, 255, 0.72),
       inset 0 0 22px rgba(0, 255, 255, 0.18);
+    contain: layout paint;
+  }
+
+  @supports (height: 100dvh) {
+    #gameShell {
+      width: min(
+        100%,
+        960px,
+        calc((100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)) * 1.7777778)
+      );
+      max-height: calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+    }
   }
 
   canvas {
@@ -462,6 +502,17 @@
     font-size: 11px;
     border-radius: 10px;
     pointer-events: auto;
+    touch-action: manipulation;
+  }
+
+  html.is-ios #pauseBtn,
+  html.is-ios #selectScreen .selectPanel {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+
+  html.is-ios #pauseBtn {
+    background: rgba(10,8,28,.86);
   }
 
   #rotateScreen {
@@ -537,6 +588,20 @@
     border: 0;
     box-shadow: none;
     background: #04010a;
+  }
+
+  html.is-ios #gameShell:fullscreen,
+  html.is-ios #gameShell:-webkit-full-screen {
+    width: min(100vw, 177.777778dvh);
+    height: auto;
+    aspect-ratio: 16 / 9;
+    margin: auto;
+  }
+
+  html.is-ios #gameShell:fullscreen canvas,
+  html.is-ios #gameShell:-webkit-full-screen canvas {
+    width: 100%;
+    height: 100%;
   }
 
   @media (orientation: portrait) {
@@ -921,22 +986,22 @@
 
       <div class="characterGrid">
         <button class="charBtn selected" data-character="brad">
-          <img class="charSprite" src="https://static.wixstatic.com/media/7b5caa_69950daabbe3408f89f6082e0413880a~mv2.png" alt="Brad sprite frame 2">
+          <img class="charSprite" src="https://static.wixstatic.com/media/7b5caa_69950daabbe3408f89f6082e0413880a~mv2.png" alt="Brad sprite frame 2" crossorigin="anonymous" decoding="async" loading="eager" fetchpriority="low">
           <span class="charName">Brad</span>
           <small>Scotch Glasses</small>
         </button>
         <button class="charBtn" data-character="jordy">
-          <img class="charSprite" src="https://static.wixstatic.com/media/7b5caa_9f05326cebc1439bb36b6ca158e9044d~mv2.png" alt="Jordy sprite frame 2">
+          <img class="charSprite" src="https://static.wixstatic.com/media/7b5caa_9f05326cebc1439bb36b6ca158e9044d~mv2.png" alt="Jordy sprite frame 2" crossorigin="anonymous" decoding="async" loading="eager" fetchpriority="low">
           <span class="charName">Jordy</span>
           <small>Espresso Martinis</small>
         </button>
         <button class="charBtn" data-character="elly">
-          <img class="charSprite" src="https://static.wixstatic.com/media/7b5caa_e4bb62ed63d046919e7c2e7ec6971437~mv2.png" alt="Elly sprite frame 2">
+          <img class="charSprite" src="https://static.wixstatic.com/media/7b5caa_e4bb62ed63d046919e7c2e7ec6971437~mv2.png" alt="Elly sprite frame 2" crossorigin="anonymous" decoding="async" loading="eager" fetchpriority="low">
           <span class="charName">Elly</span>
           <small>Beer Mugs</small>
         </button>
         <button class="charBtn" data-character="derek">
-          <img class="charSprite" src="https://static.wixstatic.com/media/7b5caa_9054fe5a02cd437a980ae927209e5b6e~mv2.png" alt="Capt Cocktail sprite frame 2">
+          <img class="charSprite" src="https://static.wixstatic.com/media/7b5caa_9054fe5a02cd437a980ae927209e5b6e~mv2.png" alt="Capt Cocktail sprite frame 2" crossorigin="anonymous" decoding="async" loading="eager" fetchpriority="low">
           <span class="charName">Capt. Cocktail</span>
           <small>Tropical Drinks</small>
         </button>
@@ -1031,6 +1096,7 @@
   const canvas = document.getElementById("gameCanvas");
   const ctx = canvas.getContext("2d");
   ctx.imageSmoothingEnabled = false;
+  const isIOS = document.documentElement.classList.contains("is-ios");
 
   const rotateScreen = document.getElementById("rotateScreen");
   const fullscreenPrompt = document.getElementById("fullscreenPrompt");
@@ -1072,37 +1138,32 @@
   const MAZE_X = Math.floor((W - COLS * TILE) / 2);
   const MAZE_Y = 92;
 
-  const bradFrame1 = new Image();
-  bradFrame1.crossOrigin = "anonymous";
-  bradFrame1.src = "https://static.wixstatic.com/media/7b5caa_efba330c66c74f22a4a0a4a754974046~mv2.png";
+  const staticScene = document.createElement("canvas");
+  staticScene.width = W;
+  staticScene.height = H;
+  const staticCtx = staticScene.getContext("2d");
+  staticCtx.imageSmoothingEnabled = false;
+  let staticSceneDirty = true;
+  let renderRequested = true;
 
-  const bradFrame2 = new Image();
-  bradFrame2.crossOrigin = "anonymous";
-  bradFrame2.src = "https://static.wixstatic.com/media/7b5caa_69950daabbe3408f89f6082e0413880a~mv2.png";
+  function createSprite(url, priority) {
+    const image = new Image();
+    image.crossOrigin = "anonymous";
+    image.decoding = "async";
+    if ("fetchPriority" in image) image.fetchPriority = priority || "low";
+    image.addEventListener("load", requestRender, { once: true });
+    image.src = url;
+    return image;
+  }
 
-  const jordyFrame1 = new Image();
-  jordyFrame1.crossOrigin = "anonymous";
-  jordyFrame1.src = "https://static.wixstatic.com/media/7b5caa_7ef55973c1ac4c3f9523c2bb5e0ba7b4~mv2.png";
-
-  const jordyFrame2 = new Image();
-  jordyFrame2.crossOrigin = "anonymous";
-  jordyFrame2.src = "https://static.wixstatic.com/media/7b5caa_9f05326cebc1439bb36b6ca158e9044d~mv2.png";
-
-  const ellyFrame1 = new Image();
-  ellyFrame1.crossOrigin = "anonymous";
-  ellyFrame1.src = "https://static.wixstatic.com/media/7b5caa_521b6996b83441d9b8717ed0cbb057e4~mv2.png";
-
-  const ellyFrame2 = new Image();
-  ellyFrame2.crossOrigin = "anonymous";
-  ellyFrame2.src = "https://static.wixstatic.com/media/7b5caa_e4bb62ed63d046919e7c2e7ec6971437~mv2.png";
-
-  const derekFrame1 = new Image();
-  derekFrame1.crossOrigin = "anonymous";
-  derekFrame1.src = "https://static.wixstatic.com/media/7b5caa_74d9d3da836e4ee3981c80e81f2efefc~mv2.png";
-
-  const derekFrame2 = new Image();
-  derekFrame2.crossOrigin = "anonymous";
-  derekFrame2.src = "https://static.wixstatic.com/media/7b5caa_9054fe5a02cd437a980ae927209e5b6e~mv2.png";
+  const bradFrame1 = createSprite("https://static.wixstatic.com/media/7b5caa_efba330c66c74f22a4a0a4a754974046~mv2.png", "high");
+  const bradFrame2 = createSprite("https://static.wixstatic.com/media/7b5caa_69950daabbe3408f89f6082e0413880a~mv2.png", "high");
+  const jordyFrame1 = createSprite("https://static.wixstatic.com/media/7b5caa_7ef55973c1ac4c3f9523c2bb5e0ba7b4~mv2.png", "low");
+  const jordyFrame2 = createSprite("https://static.wixstatic.com/media/7b5caa_9f05326cebc1439bb36b6ca158e9044d~mv2.png", "low");
+  const ellyFrame1 = createSprite("https://static.wixstatic.com/media/7b5caa_521b6996b83441d9b8717ed0cbb057e4~mv2.png", "low");
+  const ellyFrame2 = createSprite("https://static.wixstatic.com/media/7b5caa_e4bb62ed63d046919e7c2e7ec6971437~mv2.png", "low");
+  const derekFrame1 = createSprite("https://static.wixstatic.com/media/7b5caa_74d9d3da836e4ee3981c80e81f2efefc~mv2.png", "low");
+  const derekFrame2 = createSprite("https://static.wixstatic.com/media/7b5caa_9054fe5a02cd437a980ae927209e5b6e~mv2.png", "low");
 
   const characters = {
     brad: { name: "Brad", color: "#ffcc33", item: "scotch" },
@@ -1116,41 +1177,29 @@
     "https://static.wixstatic.com/mp3/7b5caa_ea34391421a54cc09e362bbb162f8a38.mp3",
     "https://static.wixstatic.com/mp3/7b5caa_1289d515dfd346399d825068667b0024.mp3",
     "https://static.wixstatic.com/mp3/7b5caa_8e626e7c696e4c9e9033a596f20e50f7.mp3",
-    "https://static.wixstatic.com/mp3/7b5caa_c21182b719074285850dcabe59e8954c.mp3",
-    "https://static.wixstatic.com/mp3/7b5caa_ea34391421a54cc09e362bbb162f8a38.mp3",
-    "https://static.wixstatic.com/mp3/7b5caa_1289d515dfd346399d825068667b0024.mp3",
-    "https://static.wixstatic.com/mp3/7b5caa_8e626e7c696e4c9e9033a596f20e50f7.mp3",
     "https://static.wixstatic.com/mp3/7b5caa_c21182b719074285850dcabe59e8954c.mp3"
   ];
 
-  const bgmTracks = levelMusicUrls.map(function (url) {
-    const audio = new Audio(url);
-    audio.loop = true;
-    audio.volume = 0.22;
-    audio.preload = "auto";
+  function createGameAudio(url, options) {
+    const audio = new Audio();
+    audio.preload = options.preload || "none";
+    audio.loop = !!options.loop;
+    audio.volume = options.volume;
+    audio.setAttribute("playsinline", "");
+    audio.setAttribute("webkit-playsinline", "");
+    audio.src = url;
     return audio;
+  }
+
+  const bgmTracks = levelMusicUrls.map(function (url) {
+    return createGameAudio(url, { loop: true, volume: 0.22, preload: "none" });
   });
 
-  const chompLoop = new Audio("https://static.wixstatic.com/mp3/7b5caa_45280fd2e9704d1e9436b8e388b59e46.mp3");
-  chompLoop.loop = true;
-  chompLoop.volume = 0.34;
-  chompLoop.preload = "auto";
-
-  const sfxEatGhost = new Audio("https://static.wixstatic.com/mp3/7b5caa_a985e81b10a64a70b7918de846b6ced3.mp3");
-  sfxEatGhost.volume = 0.75;
-  sfxEatGhost.preload = "auto";
-
-  const sfxPower = new Audio("https://static.wixstatic.com/mp3/7b5caa_65d5d908ac5640d2bee05bafec8acfa3.mp3");
-  sfxPower.volume = 0.75;
-  sfxPower.preload = "auto";
-
-  const sfxDeath = new Audio("https://static.wixstatic.com/mp3/7b5caa_df91b67f56104589b758c162800b2ac5.mp3");
-  sfxDeath.volume = 0.8;
-  sfxDeath.preload = "auto";
-
-  const sfxLevelComplete = new Audio("https://static.wixstatic.com/mp3/7b5caa_d3f284651c144aa09620284b0bb2e84d.mp3");
-  sfxLevelComplete.volume = 0.82;
-  sfxLevelComplete.preload = "auto";
+  const chompLoop = createGameAudio("https://static.wixstatic.com/mp3/7b5caa_45280fd2e9704d1e9436b8e388b59e46.mp3", { loop: true, volume: 0.34 });
+  const sfxEatGhost = createGameAudio("https://static.wixstatic.com/mp3/7b5caa_a985e81b10a64a70b7918de846b6ced3.mp3", { loop: false, volume: 0.75 });
+  const sfxPower = createGameAudio("https://static.wixstatic.com/mp3/7b5caa_65d5d908ac5640d2bee05bafec8acfa3.mp3", { loop: false, volume: 0.75 });
+  const sfxDeath = createGameAudio("https://static.wixstatic.com/mp3/7b5caa_df91b67f56104589b758c162800b2ac5.mp3", { loop: false, volume: 0.8 });
+  const sfxLevelComplete = createGameAudio("https://static.wixstatic.com/mp3/7b5caa_d3f284651c144aa09620284b0bb2e84d.mp3", { loop: false, volume: 0.82 });
 
   const levelLayouts = [
     [
@@ -1287,10 +1336,20 @@
 
   const opposite = { left: "right", right: "left", up: "down", down: "up", none: "none" };
 
+  function readHighScore() {
+    try {
+      return Number(localStorage.getItem("jncHappyHourHighScoreWideLanes") || 0);
+    } catch (err) {
+      return 0;
+    }
+  }
+
   let selectedCharacter = "brad";
   let gameState = "start";
   let score = 0;
-  let highScore = Number(localStorage.getItem("jncHappyHourHighScoreWideLanes") || 0);
+  let highScore = readHighScore();
+  let highScoreDirty = false;
+  let highScoreSaveTimer = 0;
   let level = 1;
   let lives = 3;
   let dotsLeft = 0;
@@ -1326,6 +1385,32 @@
   let powers = [];
   let player = null;
   let enemies = [];
+
+  function requestRender() {
+    renderRequested = true;
+  }
+
+  function persistHighScore() {
+    if (highScoreSaveTimer) {
+      clearTimeout(highScoreSaveTimer);
+      highScoreSaveTimer = 0;
+    }
+    if (!highScoreDirty) return;
+    try {
+      localStorage.setItem("jncHappyHourHighScoreWideLanes", String(highScore));
+      highScoreDirty = false;
+    } catch (err) {
+      // Storage can be unavailable in private browsing; gameplay should continue.
+    }
+  }
+
+  function scheduleHighScoreSave() {
+    if (highScoreSaveTimer) return;
+    highScoreSaveTimer = setTimeout(function () {
+      highScoreSaveTimer = 0;
+      persistHighScore();
+    }, 1800);
+  }
 
   function safeCell(c, r) {
     if (r < 0 || r >= ROWS || c < 0 || c >= COLS) return "#";
@@ -1496,14 +1581,26 @@
     } catch (err) {}
   }
 
+  function prepareAudio(audio) {
+    if (!audio || audio._jncLoadStarted) return;
+    audio._jncLoadStarted = true;
+    try { audio.load(); } catch (err) {}
+  }
+
+  function prepareAudioForLevel(levelNumber) {
+    if (!audioUnlocked || !bgmTracks.length) return;
+    const currentIndex = (levelNumber - 1) % bgmTracks.length;
+    const nextIndex = currentIndex + 1 < bgmTracks.length ? currentIndex + 1 : 0;
+    prepareAudio(bgmTracks[currentIndex]);
+    prepareAudio(bgmTracks[nextIndex]);
+  }
+
   function unlockAudio() {
     if (audioUnlocked) return;
     audioUnlocked = true;
 
-    const allAudio = bgmTracks.concat([chompLoop, sfxEatGhost, sfxPower, sfxDeath, sfxLevelComplete]);
-    allAudio.forEach(function (audio) {
-      try { audio.load(); } catch (err) {}
-    });
+    prepareAudioForLevel(level);
+    [chompLoop, sfxEatGhost, sfxPower, sfxDeath, sfxLevelComplete].forEach(prepareAudio);
   }
 
   function stopAllMusic() {
@@ -1519,6 +1616,7 @@
 
     const track = bgmTracks[(level - 1) % bgmTracks.length];
     if (!track) return;
+    prepareAudioForLevel(level);
     if (currentBgm === track && !track.paused) return;
 
     bgmTracks.forEach(function (bgm) {
@@ -1563,6 +1661,7 @@
 
   function selectLevelLayout() {
     layout = levelLayouts[(level - 1) % levelLayouts.length];
+    staticSceneDirty = true;
   }
 
   function loadLevel() {
@@ -1573,15 +1672,17 @@
     powerTimer = 0;
     messageTimer = 115;
     waitingForFirstMove = true;
+    prepareAudioForLevel(level);
+    requestRender();
   }
 
   async function enterFullscreenAndLandscape() {
     const shell = document.getElementById("gameShell");
 
     try {
-      if (!document.fullscreenElement && shell.requestFullscreen) {
+      if (!isFullscreenNow() && shell.requestFullscreen) {
         await shell.requestFullscreen();
-      } else if (!document.webkitFullscreenElement && shell.webkitRequestFullscreen) {
+      } else if (!isFullscreenNow() && shell.webkitRequestFullscreen) {
         shell.webkitRequestFullscreen();
       }
     } catch (err) {
@@ -1606,12 +1707,17 @@
     return window.innerWidth > window.innerHeight;
   }
 
+  function supportsElementFullscreen() {
+    const shell = document.getElementById("gameShell");
+    return !!(shell && (shell.requestFullscreen || shell.webkitRequestFullscreen));
+  }
+
   function isFullscreenNow() {
-    return !!document.fullscreenElement || !!document.webkitFullscreenElement;
+    return !!document.fullscreenElement || !!document.webkitFullscreenElement || navigator.standalone === true;
   }
 
   function updateMobileFullscreenPrompt() {
-    if (!isCoarsePointerDevice()) {
+    if (!isCoarsePointerDevice() || !supportsElementFullscreen() || navigator.standalone === true) {
       fullscreenPrompt.classList.remove("visible");
       return;
     }
@@ -1625,6 +1731,11 @@
 
   async function requestMobileFullscreenFromTap() {
     mobileFullscreenPrimed = true;
+
+    if (!supportsElementFullscreen() || navigator.standalone === true) {
+      fullscreenPrompt.classList.remove("visible");
+      return;
+    }
 
     try {
       const shell = document.getElementById("gameShell");
@@ -1650,6 +1761,11 @@
 
 
   async function attemptFullscreenOnLoad() {
+    if (isIOS || !supportsElementFullscreen() || navigator.standalone === true) {
+      updateMobileFullscreenPrompt();
+      return;
+    }
+
     // Browsers usually block this without a user gesture, but we try anyway.
     // If blocked, the existing Tap to Play overlay handles fullscreen reliably.
     try {
@@ -1680,7 +1796,7 @@
 
     if (isCoarsePointerDevice()) {
       mobileFullscreenPrimed = true;
-      if (isLandscapeNow()) {
+      if (isLandscapeNow() && supportsElementFullscreen()) {
         await requestMobileFullscreenFromTap();
       } else {
         updateMobileFullscreenPrompt();
@@ -1778,7 +1894,8 @@
 
     if (score > highScore) {
       highScore = score;
-      localStorage.setItem("jncHappyHourHighScoreWideLanes", String(highScore));
+      highScoreDirty = true;
+      scheduleHighScoreSave();
     }
   }
 
@@ -1947,6 +2064,7 @@
     hidePauseMenu();
     stopChompLoop();
     stopAllMusic();
+    persistHighScore();
     gameState = "ended";
     endScreen.classList.remove("hidden");
 
@@ -1960,9 +2078,8 @@
   }
 
   function draw() {
-    drawBackground();
+    drawStaticScene();
     drawHeader();
-    drawMaze();
     drawCollectibles();
     drawEnemies();
     drawPlayer();
@@ -1973,23 +2090,33 @@
     if (gameState === "hit") drawHit();
   }
 
-  function drawBackground() {
-    ctx.fillStyle = "#04010a";
-    ctx.fillRect(0, 0, W, H);
+  function drawStaticScene() {
+    if (staticSceneDirty) {
+      staticCtx.clearRect(0, 0, W, H);
+      drawBackground(staticCtx);
+      drawMaze(staticCtx);
+      staticSceneDirty = false;
+    }
+    ctx.drawImage(staticScene, 0, 0);
+  }
 
-    const bg = ctx.createLinearGradient(0, 0, 0, H);
+  function drawBackground(g) {
+    g.fillStyle = "#04010a";
+    g.fillRect(0, 0, W, H);
+
+    const bg = g.createLinearGradient(0, 0, 0, H);
     bg.addColorStop(0, "#171035");
     bg.addColorStop(0.45, "#060414");
     bg.addColorStop(1, "#020007");
-    ctx.fillStyle = bg;
-    ctx.fillRect(0, 0, W, H);
+    g.fillStyle = bg;
+    g.fillRect(0, 0, W, H);
 
-    ctx.strokeStyle = "rgba(255,204,51,.45)";
-    ctx.lineWidth = 3;
-    ctx.strokeRect(13, 13, W - 26, H - 26);
+    g.strokeStyle = "rgba(255,204,51,.45)";
+    g.lineWidth = 3;
+    g.strokeRect(13, 13, W - 26, H - 26);
 
-    ctx.strokeStyle = "rgba(64,245,255,.18)";
-    ctx.strokeRect(22, 22, W - 44, H - 44);
+    g.strokeStyle = "rgba(64,245,255,.18)";
+    g.strokeRect(22, 22, W - 44, H - 44);
   }
 
   function drawHeader() {
@@ -2042,8 +2169,8 @@
     ctx.restore();
   }
 
-  function drawMaze() {
-    ctx.save();
+  function drawMaze(g) {
+    g.save();
 
     for (let r = 0; r < ROWS; r++) {
       for (let c = 0; c < COLS; c++) {
@@ -2052,23 +2179,23 @@
         const x = MAZE_X + c * TILE;
         const y = MAZE_Y + r * TILE;
 
-        ctx.fillStyle = "#100733";
-        ctx.fillRect(x, y, TILE, TILE);
+        g.fillStyle = "#100733";
+        g.fillRect(x, y, TILE, TILE);
 
-        ctx.shadowColor = "#2538ff";
-        ctx.shadowBlur = 10;
-        ctx.strokeStyle = "#263dff";
-        ctx.lineWidth = 3;
-        ctx.strokeRect(x + 3, y + 3, TILE - 6, TILE - 6);
+        g.shadowColor = "#2538ff";
+        g.shadowBlur = 10;
+        g.strokeStyle = "#263dff";
+        g.lineWidth = 3;
+        g.strokeRect(x + 3, y + 3, TILE - 6, TILE - 6);
 
-        ctx.shadowBlur = 0;
-        ctx.strokeStyle = "rgba(68,255,255,.35)";
-        ctx.lineWidth = 1;
-        ctx.strokeRect(x + 8, y + 8, TILE - 16, TILE - 16);
+        g.shadowBlur = 0;
+        g.strokeStyle = "rgba(68,255,255,.35)";
+        g.lineWidth = 1;
+        g.strokeRect(x + 8, y + 8, TILE - 16, TILE - 16);
       }
     }
 
-    ctx.restore();
+    g.restore();
   }
 
   function drawCollectibles() {
@@ -2572,6 +2699,7 @@
   }
 
   function showPauseMenu() {
+    persistHighScore();
     updatePauseStats();
     updatePauseSelection(0);
     pauseMoveLock = false;
@@ -2610,6 +2738,7 @@
     hidePauseMenu();
     stopChompLoop();
     stopAllMusic();
+    persistHighScore();
     endScreen.classList.add("hidden");
     selectScreen.classList.add("hidden");
     swipeScreen.classList.add("hidden");
@@ -3005,31 +3134,23 @@
     startGame();
   });
 
-  rotateScreen.addEventListener("pointerdown", function () {
+  function addFastPressListener(element, handler) {
+    const eventName = window.PointerEvent ? "pointerdown" : "touchstart";
+    element.addEventListener(eventName, handler, { passive: true });
+  }
+
+  addFastPressListener(rotateScreen, function () {
     if (isCoarsePointerDevice()) {
       mobileFullscreenPrimed = true;
       updateMobileFullscreenPrompt();
     }
   });
 
-  rotateScreen.addEventListener("touchstart", function () {
-    if (isCoarsePointerDevice()) {
-      mobileFullscreenPrimed = true;
-      updateMobileFullscreenPrompt();
-    }
-  }, { passive: true });
-
-  startScreen.addEventListener("pointerdown", function (e) {
+  addFastPressListener(startScreen, function (e) {
     if (gameState === "start" && !e.target.closest("#titleStartBtn, #mainMenuBtn")) {
       primeStartScreenFullscreen();
     }
   });
-
-  startScreen.addEventListener("touchstart", function () {
-    if (gameState === "start") {
-      primeStartScreenFullscreen();
-    }
-  }, { passive: true });
 
   function handlePostRotateMaybeFullscreen() {
     if (mobileFullscreenPrimed && isCoarsePointerDevice()) {
@@ -3052,19 +3173,18 @@
     if (document.hidden) {
       stopChompLoop();
       pauseBgm();
+      persistHighScore();
     } else {
+      lastTime = performance.now();
+      requestRender();
       setTimeout(handlePostRotateMaybeFullscreen, 120);
       resumeBgm();
     }
   });
 
-  fullscreenPrompt.addEventListener("pointerdown", async function () {
-    await requestMobileFullscreenFromTap();
+  addFastPressListener(fullscreenPrompt, function () {
+    requestMobileFullscreenFromTap();
   });
-
-  fullscreenPrompt.addEventListener("touchstart", async function () {
-    await requestMobileFullscreenFromTap();
-  }, { passive: true });
 
   restartBtn.addEventListener("click", function () {
     endScreen.classList.add("hidden");
@@ -3152,30 +3272,75 @@
 
   let touchStartX = 0;
   let touchStartY = 0;
+  let activeTouchId = null;
+  let touchHandled = false;
 
-  canvas.addEventListener("touchstart", function (e) {
-    const t = e.changedTouches[0];
-    touchStartX = t.clientX;
-    touchStartY = t.clientY;
-  }, { passive: true });
+  function findTrackedTouch(touchList) {
+    for (let i = 0; i < touchList.length; i++) {
+      if (touchList[i].identifier === activeTouchId) return touchList[i];
+    }
+    return null;
+  }
 
-  canvas.addEventListener("touchend", function (e) {
-    const t = e.changedTouches[0];
-    const dx = t.clientX - touchStartX;
-    const dy = t.clientY - touchStartY;
-
-    if (Math.abs(dx) < 20 && Math.abs(dy) < 20) return;
-
+  function applySwipe(dx, dy, threshold) {
+    if (Math.max(Math.abs(dx), Math.abs(dy)) < threshold) return false;
     if (Math.abs(dx) > Math.abs(dy)) changeDirection(dx > 0 ? "right" : "left");
     else changeDirection(dy > 0 ? "down" : "up");
+    return true;
+  }
+
+  canvas.addEventListener("touchstart", function (e) {
+    if (!e.changedTouches.length) return;
+    const touch = e.changedTouches[0];
+    activeTouchId = touch.identifier;
+    touchStartX = touch.clientX;
+    touchStartY = touch.clientY;
+    touchHandled = false;
+    e.preventDefault();
+  }, { passive: false });
+
+  canvas.addEventListener("touchmove", function (e) {
+    const touch = findTrackedTouch(e.touches);
+    if (!touch) return;
+    e.preventDefault();
+    if (!touchHandled) {
+      touchHandled = applySwipe(touch.clientX - touchStartX, touch.clientY - touchStartY, 18);
+    }
+  }, { passive: false });
+
+  canvas.addEventListener("touchend", function (e) {
+    const touch = findTrackedTouch(e.changedTouches);
+    if (!touch) return;
+    e.preventDefault();
+    if (!touchHandled) {
+      applySwipe(touch.clientX - touchStartX, touch.clientY - touchStartY, 18);
+    }
+    activeTouchId = null;
+    touchHandled = false;
+  }, { passive: false });
+
+  canvas.addEventListener("touchcancel", function () {
+    activeTouchId = null;
+    touchHandled = false;
   }, { passive: true });
 
+  const IOS_FRAME_INTERVAL = 1000 / 60;
+
   function loop(time) {
+    requestAnimationFrame(loop);
+
+    if (isIOS && lastTime && time - lastTime < IOS_FRAME_INTERVAL - 1) {
+      return;
+    }
+
     const dt = Math.min((time - lastTime) / 1000, 0.05) || 0.016;
     lastTime = time;
     update(dt);
-    draw();
-    requestAnimationFrame(loop);
+    const isAnimatedState = gameState === "playing" || gameState === "hit";
+    if (isAnimatedState || renderRequested) {
+      draw();
+      renderRequested = false;
+    }
   }
 
   window.addEventListener("load", function () {
@@ -3186,6 +3351,18 @@
   document.addEventListener("DOMContentLoaded", function () {
     mobileFullscreenPrimed = true;
     setTimeout(attemptFullscreenOnLoad, 100);
+  });
+
+  window.addEventListener("pagehide", function () {
+    stopChompLoop();
+    pauseBgm();
+    persistHighScore();
+  });
+
+  window.addEventListener("pageshow", function () {
+    lastTime = performance.now();
+    requestRender();
+    if (!document.hidden) resumeBgm();
   });
 
   requestAnimationFrame(loop);
