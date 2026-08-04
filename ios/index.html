@@ -3337,6 +3337,8 @@
 
   document.addEventListener("visibilitychange", function () {
     if (document.hidden) {
+      resetSwipeInput();
+      cancelGameFrame();
       stopChompLoop();
       pauseBgm();
       suspendSfxAudio();
@@ -3344,6 +3346,7 @@
     } else {
       lastTime = performance.now();
       requestRender();
+      scheduleGameFrame();
       setTimeout(handlePostRotateMaybeFullscreen, 120);
       resumeSfxAudio();
       resumeBgm();
@@ -3441,7 +3444,6 @@
   let touchStartX = 0;
   let touchStartY = 0;
   let activeTouchId = null;
-  let touchHandled = false;
 
   function findTrackedTouch(touchList) {
     for (let i = 0; i < touchList.length; i++) {
@@ -3457,50 +3459,120 @@
     return true;
   }
 
-  canvas.addEventListener("touchstart", function (e) {
-    if (!e.changedTouches.length) return;
-    const touch = e.changedTouches[0];
-    activeTouchId = touch.identifier;
-    touchStartX = touch.clientX;
-    touchStartY = touch.clientY;
-    touchHandled = false;
-    e.preventDefault();
-  }, { passive: false });
+  function beginSwipeInput(identifier, clientX, clientY) {
+    activeTouchId = identifier;
+    touchStartX = clientX;
+    touchStartY = clientY;
+  }
 
-  canvas.addEventListener("touchmove", function (e) {
-    const touch = findTrackedTouch(e.touches);
-    if (!touch) return;
-    e.preventDefault();
-    if (!touchHandled) {
-      touchHandled = applySwipe(touch.clientX - touchStartX, touch.clientY - touchStartY, 18);
+  function continueSwipeInput(identifier, clientX, clientY) {
+    if (identifier !== activeTouchId) return false;
+    if (applySwipe(clientX - touchStartX, clientY - touchStartY, 18)) {
+      // Treat the current point as a new origin so one held finger can make
+      // several turns without relying on Safari to finish the prior gesture.
+      touchStartX = clientX;
+      touchStartY = clientY;
+      return true;
     }
-  }, { passive: false });
+    return false;
+  }
 
-  canvas.addEventListener("touchend", function (e) {
-    const touch = findTrackedTouch(e.changedTouches);
-    if (!touch) return;
-    e.preventDefault();
-    if (!touchHandled) {
-      applySwipe(touch.clientX - touchStartX, touch.clientY - touchStartY, 18);
-    }
+  function resetSwipeInput() {
     activeTouchId = null;
-    touchHandled = false;
-  }, { passive: false });
+  }
 
-  canvas.addEventListener("touchcancel", function () {
-    activeTouchId = null;
-    touchHandled = false;
-  }, { passive: true });
+  function finishSwipeInput(identifier, clientX, clientY) {
+    if (identifier !== activeTouchId) return false;
+    continueSwipeInput(identifier, clientX, clientY);
+    resetSwipeInput();
+    return true;
+  }
+
+  if (window.PointerEvent) {
+    canvas.addEventListener("pointerdown", function (e) {
+      if (!e.isPrimary || (e.pointerType === "mouse" && e.button !== 0)) return;
+      beginSwipeInput(e.pointerId, e.clientX, e.clientY);
+      try { canvas.setPointerCapture(e.pointerId); } catch (err) {}
+      if (e.cancelable) e.preventDefault();
+    }, { passive: false });
+
+    canvas.addEventListener("pointermove", function (e) {
+      if (e.pointerId !== activeTouchId) return;
+      if (e.cancelable) e.preventDefault();
+      continueSwipeInput(e.pointerId, e.clientX, e.clientY);
+    }, { passive: false });
+
+    canvas.addEventListener("pointerup", function (e) {
+      if (!finishSwipeInput(e.pointerId, e.clientX, e.clientY)) return;
+      if (e.cancelable) e.preventDefault();
+      try { canvas.releasePointerCapture(e.pointerId); } catch (err) {}
+    }, { passive: false });
+
+    canvas.addEventListener("pointercancel", function (e) {
+      if (e.pointerId === activeTouchId) resetSwipeInput();
+    }, { passive: true });
+
+    canvas.addEventListener("lostpointercapture", function (e) {
+      if (e.pointerId === activeTouchId) resetSwipeInput();
+    });
+  } else {
+    canvas.addEventListener("touchstart", function (e) {
+      if (!e.changedTouches.length) return;
+      const touch = e.changedTouches[0];
+      beginSwipeInput(touch.identifier, touch.clientX, touch.clientY);
+      e.preventDefault();
+    }, { passive: false });
+
+    canvas.addEventListener("touchmove", function (e) {
+      const touch = findTrackedTouch(e.touches);
+      if (!touch) return;
+      e.preventDefault();
+      continueSwipeInput(touch.identifier, touch.clientX, touch.clientY);
+    }, { passive: false });
+
+    canvas.addEventListener("touchend", function (e) {
+      const touch = findTrackedTouch(e.changedTouches);
+      if (!touch) return;
+      e.preventDefault();
+      finishSwipeInput(touch.identifier, touch.clientX, touch.clientY);
+    }, { passive: false });
+
+    canvas.addEventListener("touchcancel", resetSwipeInput, { passive: true });
+
+    // A document-level safety net covers rare Safari cases where the canvas
+    // does not receive the final event for the touch it started.
+    document.addEventListener("touchend", function (e) {
+      if (findTrackedTouch(e.changedTouches)) resetSwipeInput();
+    }, { passive: true });
+    document.addEventListener("touchcancel", resetSwipeInput, { passive: true });
+  }
+
+  window.addEventListener("blur", function () {
+    resetSwipeInput();
+  });
 
   const IOS_FRAME_INTERVAL = 1000 / 60;
+  let animationFrameId = 0;
+
+  function scheduleGameFrame() {
+    if (!animationFrameId) animationFrameId = requestAnimationFrame(loop);
+  }
+
+  function cancelGameFrame() {
+    if (!animationFrameId) return;
+    cancelAnimationFrame(animationFrameId);
+    animationFrameId = 0;
+  }
 
   function loop(time) {
-    requestAnimationFrame(loop);
+    animationFrameId = 0;
 
     if (document.hidden) {
       lastTime = time;
       return;
     }
+
+    scheduleGameFrame();
 
     if (isIOS && lastTime && time - lastTime < IOS_FRAME_INTERVAL - 1) {
       return;
@@ -3527,6 +3599,8 @@
   });
 
   window.addEventListener("pagehide", function () {
+    resetSwipeInput();
+    cancelGameFrame();
     stopChompLoop();
     pauseBgm();
     suspendSfxAudio();
@@ -3534,15 +3608,17 @@
   });
 
   window.addEventListener("pageshow", function () {
+    resetSwipeInput();
     lastTime = performance.now();
     requestRender();
+    scheduleGameFrame();
     if (!document.hidden) {
       resumeSfxAudio();
       resumeBgm();
     }
   });
 
-  requestAnimationFrame(loop);
+  scheduleGameFrame();
 })();
 </script>
 </body>
