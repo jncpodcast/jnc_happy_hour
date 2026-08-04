@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#05020a">
+  <title>JNC Happy Hour</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      width: 100%;
+      min-height: 100%;
+      margin: 0;
+      background:
+        radial-gradient(circle at top, #35135f, #05020a 62%, #000);
+      color: white;
+      font-family: Arial, Helvetica, sans-serif;
+    }
+
+    body {
+      display: grid;
+      place-items: center;
+      text-align: center;
+      padding:
+        max(24px, env(safe-area-inset-top, 0px))
+        max(24px, env(safe-area-inset-right, 0px))
+        max(24px, env(safe-area-inset-bottom, 0px))
+        max(24px, env(safe-area-inset-left, 0px));
+    }
+
+    .loading {
+      width: min(520px, 100%);
+      padding: 28px;
+      border: 3px solid #ffcc33;
+      border-radius: 18px;
+      background: rgba(5, 2, 12, .92);
+      box-shadow: 0 0 24px rgba(255, 204, 51, .35);
+    }
+
+    h1 {
+      margin: 0 0 12px;
+      color: #ffcc33;
+      letter-spacing: 1px;
+      text-shadow: 3px 3px 0 #7327ff;
+    }
+
+    p {
+      line-height: 1.4;
+    }
+
+    .fallback {
+      margin-top: 20px;
+      display: none;
+    }
+
+    a {
+      display: inline-block;
+      margin: 6px;
+      padding: 12px 18px;
+      color: #05020a;
+      background: #ffcc33;
+      border-radius: 9px;
+      text-decoration: none;
+      font-weight: 900;
+    }
+  </style>
+</head>
+
+<body>
+  <main class="loading">
+    <h1>JNC HAPPY HOUR</h1>
+    <p id="status">Preparing your game…</p>
+
+    <div class="fallback" id="fallback">
+      <p>Choose your version:</p>
+      <a href="./ios/">iPhone / iPad</a>
+      <a href="./android/">Android / Desktop</a>
+    </div>
+
+    <noscript>
+      <p>JavaScript is disabled. Choose your version:</p>
+      <a href="./ios/">iPhone / iPad</a>
+      <a href="./android/">Android / Desktop</a>
+    </noscript>
+  </main>
+
+  <script>
+    (() => {
+      const userAgent = navigator.userAgent || "";
+      const platform = navigator.platform || "";
+      const isAndroid = /Android/i.test(userAgent);
+      const isStandardIOS = /iPhone|iPad|iPod/i.test(userAgent);
+      const isModernIPad = platform === "MacIntel" && navigator.maxTouchPoints > 1;
+      const isIOS = isStandardIOS || isModernIPad;
+
+      let destination = "";
+
+      if (isIOS) {
+        destination = "./ios/";
+      } else if (isAndroid) {
+        destination = "./android/";
+      }
+
+      if (destination) {
+        window.location.replace(destination);
+        return;
+      }
+
+      document.getElementById("status").textContent =
+        "Select the version you would like to play.";
+      document.getElementById("fallback").style.display = "block";
+    })();
+  </script>
+</body>
+</html>
