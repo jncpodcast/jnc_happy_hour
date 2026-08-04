@@ -2367,8 +2367,33 @@
 
   function eraseCollectible(c, r) {
     if (collectiblesLayerDirty) return;
-    const half = COLLECTIBLE_SPRITE_SIZE / 2 + 1;
-    collectiblesCtx.clearRect(tileX(c) - half, tileY(r) - half, half * 2, half * 2);
+    const spriteHalf = COLLECTIBLE_SPRITE_SIZE / 2;
+    const damageHalf = spriteHalf + 1;
+    const damageX = tileX(c) - damageHalf;
+    const damageY = tileY(r) - damageHalf;
+    const damageSize = damageHalf * 2;
+    const sprite = getCollectibleSprite(selectedCharacter);
+
+    collectiblesCtx.save();
+    collectiblesCtx.clearRect(damageX, damageY, damageSize, damageSize);
+    collectiblesCtx.beginPath();
+    collectiblesCtx.rect(damageX, damageY, damageSize, damageSize);
+    collectiblesCtx.clip();
+
+    // Cocktail sprites are wider than one maze tile. Restore only the pieces of
+    // neighboring, still-active cocktails that shared the erased rectangle.
+    for (let neighborR = Math.max(0, r - 2); neighborR <= Math.min(ROWS - 1, r + 2); neighborR++) {
+      for (let neighborC = Math.max(0, c - 2); neighborC <= Math.min(COLS - 1, c + 2); neighborC++) {
+        if (!dots[neighborR] || !dots[neighborR][neighborC]) continue;
+        collectiblesCtx.drawImage(
+          sprite,
+          tileX(neighborC) - spriteHalf,
+          tileY(neighborR) - spriteHalf
+        );
+      }
+    }
+
+    collectiblesCtx.restore();
   }
 
   function getCollectibleSprite(characterKey) {
