@@ -1377,6 +1377,9 @@
   let controllerBootLocked = true;
   let controllerBootStartedAt = performance.now();
   let lastGamepadSignature = "";
+  let gamepadProfiles = {};
+  const padDebugEnabled = new URLSearchParams(window.location.search).has("paddebug");
+  let padDebugBox = null;
 
   let audioUnlocked = false;
   let currentBgm = null;
@@ -2762,7 +2765,8 @@
       const pad = pads[i];
       if (!pad) continue;
       if (!fallback) fallback = pad;
-      if (anyGamepadButtonPressed(pad) || getGamepadDirection(pad)) return pad;
+      ensureGamepadProfile(pad);
+      if (hasMeaningfulGamepadInput(pad)) return pad;
     }
 
     return fallback;
@@ -2784,6 +2788,112 @@
   const GAMEPAD_FACE_BUTTONS = [0, 1, 2, 3];
   const GAMEPAD_START_BUTTONS = [8, 9, 10, 11, 7];
   const GAMEPAD_SELECT_BUTTONS = [0, 1, 2, 3, 8, 9, 10, 11, 7];
+
+  function getGamepadProfileKey(pad) {
+    return String(pad.index) + ":" + (pad.id || "gamepad");
+  }
+
+  function getButtonValue(button) {
+    if (!button) return 0;
+    return button.pressed ? 1 : (button.value || 0);
+  }
+
+  function captureGamepadProfile(pad) {
+    if (!pad) return null;
+
+    const key = getGamepadProfileKey(pad);
+    gamepadProfiles[key] = {
+      axes: Array.from(pad.axes || []),
+      buttons: Array.from(pad.buttons || []).map(getButtonValue)
+    };
+
+    return gamepadProfiles[key];
+  }
+
+  function ensureGamepadProfile(pad) {
+    if (!pad) return null;
+
+    const key = getGamepadProfileKey(pad);
+    if (!gamepadProfiles[key]) {
+      captureGamepadProfile(pad);
+    }
+
+    return gamepadProfiles[key];
+  }
+
+  function buttonActiveRelative(pad, index) {
+    if (!pad || !pad.buttons || !pad.buttons[index]) return false;
+
+    const profile = ensureGamepadProfile(pad);
+    const base = profile && profile.buttons[index] ? profile.buttons[index] : 0;
+    const value = getButtonValue(pad.buttons[index]);
+    return value > 0.5 && value - base > 0.25;
+  }
+
+  function axisDelta(pad, index) {
+    if (!pad || !pad.axes || index >= pad.axes.length) return 0;
+
+    const profile = ensureGamepadProfile(pad);
+    const base = profile && typeof profile.axes[index] === "number" ? profile.axes[index] : 0;
+    return (pad.axes[index] || 0) - base;
+  }
+
+  function hasMeaningfulGamepadInput(pad) {
+    if (!pad) return false;
+    if (getGamepadDirection(pad)) return true;
+    if (gamepadSelectPressed(pad)) return true;
+    if (gamepadStartPressed(pad)) return true;
+
+    if (pad.axes) {
+      for (let i = 0; i < pad.axes.length; i++) {
+        if (Math.abs(axisDelta(pad, i)) > 0.30) return true;
+      }
+    }
+
+    return false;
+  }
+
+  function updatePadDebug(pad) {
+    if (!padDebugEnabled) return;
+
+    if (!padDebugBox) {
+      padDebugBox = document.createElement("pre");
+      padDebugBox.style.position = "fixed";
+      padDebugBox.style.left = "8px";
+      padDebugBox.style.bottom = "8px";
+      padDebugBox.style.zIndex = "9999";
+      padDebugBox.style.maxWidth = "92vw";
+      padDebugBox.style.maxHeight = "42vh";
+      padDebugBox.style.overflow = "auto";
+      padDebugBox.style.margin = "0";
+      padDebugBox.style.padding = "8px";
+      padDebugBox.style.background = "rgba(0,0,0,0.82)";
+      padDebugBox.style.color = "#7CFF7C";
+      padDebugBox.style.font = "11px/1.35 monospace";
+      padDebugBox.style.pointerEvents = "none";
+      document.body.appendChild(padDebugBox);
+    }
+
+    if (!pad) {
+      padDebugBox.textContent = "NO GAMEPAD";
+      return;
+    }
+
+    const axes = Array.from(pad.axes || []).map(function (v, i) {
+      return i + ":" + Number(v || 0).toFixed(3) + "(" + axisDelta(pad, i).toFixed(3) + ")";
+    }).join(" ");
+    const buttons = Array.from(pad.buttons || []).map(function (button, i) {
+      const value = getButtonValue(button);
+      return value > 0.05 ? i + ":" + value.toFixed(2) : "";
+    }).filter(Boolean).join(" ");
+
+    padDebugBox.textContent =
+      "PAD " + pad.index + " " + (pad.id || "unknown") + "\n" +
+      "mapping: " + (pad.mapping || "none") + " state: " + gameState + " bootLock: " + controllerBootLocked + "\n" +
+      "direction: " + (getGamepadDirection(pad) || "none") + " select: " + gamepadSelectPressed(pad) + " start: " + gamepadStartPressed(pad) + "\n" +
+      "axes: " + (axes || "none") + "\n" +
+      "buttons: " + (buttons || "none");
+  }
 
   function anyGamepadButtonPressed(pad) {
     if (!pad || !pad.buttons) return false;
@@ -2814,11 +2924,22 @@
       return gamepadButtonOutsidePressed(pad, [0, 1, 2, 3]);
     }
 
-    return anyGamepadButtonPressed(pad) || buttonPressed(pad, GAMEPAD_SELECT_BUTTONS);
+    if (buttonPressed(pad, GAMEPAD_SELECT_BUTTONS)) return true;
+
+    if (!pad || !pad.buttons) return false;
+    for (let i = 0; i < pad.buttons.length; i++) {
+      if (buttonActiveRelative(pad, i)) return true;
+    }
+
+    return false;
   }
 
   function gamepadStartPressed(pad) {
-    return buttonPressed(pad, GAMEPAD_START_BUTTONS);
+    return buttonPressed(pad, GAMEPAD_START_BUTTONS) ||
+      buttonActiveRelative(pad, 8) ||
+      buttonActiveRelative(pad, 9) ||
+      buttonActiveRelative(pad, 10) ||
+      buttonActiveRelative(pad, 11);
   }
 
   function gamepadButtonSignature(pad) {
@@ -2864,6 +2985,29 @@
     return bestDirection;
   }
 
+  function profiledAxisDirection(pad, deadzone) {
+    if (!pad || !pad.axes) return null;
+
+    let bestDirection = null;
+    let bestStrength = deadzone;
+
+    for (let i = 0; i < pad.axes.length; i++) {
+      const delta = axisDelta(pad, i);
+      const strength = Math.abs(delta);
+      if (strength <= bestStrength) continue;
+
+      bestStrength = strength;
+
+      if (i % 2 === 0) {
+        bestDirection = delta < 0 ? "left" : "right";
+      } else {
+        bestDirection = delta < 0 ? "up" : "down";
+      }
+    }
+
+    return bestDirection;
+  }
+
   function hatAxisDirection(pad) {
     if (!pad || !pad.axes) return null;
 
@@ -2874,13 +3018,14 @@
       // -1 up, -0.71 up/right, -0.43 right, -0.14 down/right,
       //  0.14 down, 0.43 down/left, 0.71 left, 1 up/left.
       // Some controllers report neutral as 0, 1, or 3.28; skip ambiguous edges.
-      if (Math.abs(v) < 0.08 || v > 1.05 || v < -1.05 || v > 0.92) continue;
+      if (Math.abs(v) < 0.08 || v > 1.35 || v < -1.35) continue;
+      if (Math.abs(axisDelta(pad, i)) < 0.12) continue;
 
       if (v <= -0.57) return "up";
       if (v <= -0.28) return "right";
       if (v <= 0.28) return "down";
       if (v <= 0.57) return "left";
-      if (v <= 0.92) return "left";
+      if (v <= 1.05) return "left";
     }
 
     return null;
@@ -2903,10 +3048,20 @@
 
     // A few cabinet encoders expose the stick as the first four buttons.
     // Common orders vary, so prefer the order most often used by USB arcade boards.
-    if (buttonPressed(pad, [0])) return "up";
-    if (buttonPressed(pad, [1])) return "down";
-    if (buttonPressed(pad, [2])) return "left";
-    if (buttonPressed(pad, [3])) return "right";
+    const maps = [
+      { up: 0, down: 1, left: 2, right: 3 },
+      { left: 0, right: 1, up: 2, down: 3 },
+      { up: 4, down: 5, left: 6, right: 7 },
+      { left: 4, right: 5, up: 6, down: 7 }
+    ];
+
+    for (let i = 0; i < maps.length; i++) {
+      const map = maps[i];
+      if (buttonActiveRelative(pad, map.up)) return "up";
+      if (buttonActiveRelative(pad, map.down)) return "down";
+      if (buttonActiveRelative(pad, map.left)) return "left";
+      if (buttonActiveRelative(pad, map.right)) return "right";
+    }
 
     return null;
   }
@@ -2943,7 +3098,10 @@
     if (dpadLeft) return "left";
     if (dpadRight) return "right";
 
-    return strongestStickDirection(pad, dead) || hatAxisDirection(pad) || arcadeButtonDirection(pad);
+    return strongestStickDirection(pad, dead) ||
+      profiledAxisDirection(pad, dead) ||
+      hatAxisDirection(pad) ||
+      arcadeButtonDirection(pad);
   }
 
   function resetControllerLocks() {
@@ -3106,15 +3264,18 @@
 
     if (!pad) {
       gamepadStatus = "NO GAMEPAD";
+      updatePadDebug(null);
       return;
     }
 
+    updatePadDebug(pad);
     gamepadStatus = "GAMEPAD OK: " + (pad.id ? pad.id.substring(0, 23) : "CONNECTED");
 
     if (controllerBootLocked) {
       // This prevents the launch button from index.html from double-selecting inside this game,
       // while still allowing arcade encoder boards whose neutral stick reports a noisy axis.
       if (controllerBootCanUnlock(pad)) {
+        if (!anyGamepadButtonPressed(pad)) captureGamepadProfile(pad);
         controllerBootLocked = false;
         resetControllerLocks();
       } else {
@@ -3215,10 +3376,12 @@
   }
 
   window.addEventListener("gamepadconnected", function (event) {
+    captureGamepadProfile(event.gamepad);
     gamepadStatus = "GAMEPAD: " + (event.gamepad.id ? event.gamepad.id.substring(0, 26) : "CONNECTED");
   });
 
   window.addEventListener("gamepaddisconnected", function () {
+    gamepadProfiles = {};
     gamepadStatus = "NO GAMEPAD";
   });
 
