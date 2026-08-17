@@ -1376,6 +1376,7 @@
   // Ignore gamepad input until all buttons/directions are released once.
   let controllerBootLocked = true;
   let controllerBootStartedAt = performance.now();
+  let lastGamepadSignature = "";
 
   let audioUnlocked = false;
   let currentBgm = null;
@@ -2755,15 +2756,21 @@
     if (!navigator.getGamepads) return null;
 
     const pads = navigator.getGamepads();
+    let fallback = null;
 
     for (let i = 0; i < pads.length; i++) {
-      if (pads[i]) return pads[i];
+      const pad = pads[i];
+      if (!pad) continue;
+      if (!fallback) fallback = pad;
+      if (anyGamepadButtonPressed(pad) || getGamepadDirection(pad)) return pad;
     }
 
-    return null;
+    return fallback;
   }
 
   function buttonPressed(pad, indexes) {
+    if (!pad || !pad.buttons) return false;
+
     for (let i = 0; i < indexes.length; i++) {
       const button = pad.buttons[indexes[i]];
       if (button && (button.pressed || button.value > 0.5)) return true;
@@ -2771,6 +2778,12 @@
 
     return false;
   }
+
+  const GAMEPAD_AXIS_DEADZONE = 0.35;
+  const GAMEPAD_AXIS_RELEASE_ZONE = 0.28;
+  const GAMEPAD_FACE_BUTTONS = [0, 1, 2, 3];
+  const GAMEPAD_START_BUTTONS = [8, 9, 10, 11, 7];
+  const GAMEPAD_SELECT_BUTTONS = [0, 1, 2, 3, 8, 9, 10, 11, 7];
 
   function anyGamepadButtonPressed(pad) {
     if (!pad || !pad.buttons) return false;
@@ -2783,23 +2796,91 @@
     return false;
   }
 
-  function anyGamepadAxisActive(pad) {
-    if (!pad || !pad.axes) return false;
+  function gamepadButtonSignature(pad) {
+    if (!pad || !pad.buttons) return "";
 
-    for (let i = 0; i < pad.axes.length; i++) {
-      if (Math.abs(pad.axes[i] || 0) > 0.35) return true;
+    let pressed = [];
+    for (let i = 0; i < pad.buttons.length; i++) {
+      const button = pad.buttons[i];
+      if (button && (button.pressed || button.value > 0.5)) pressed.push(i);
     }
 
-    return false;
+    return pressed.join(",");
+  }
+
+  function strongestStickDirection(pad, deadzone) {
+    if (!pad || !pad.axes) return false;
+
+    const axisPairs = [
+      [0, 1],
+      [2, 3],
+      [4, 5],
+      [6, 7]
+    ];
+
+    let bestDirection = null;
+    let bestStrength = deadzone;
+
+    for (let i = 0; i < axisPairs.length; i++) {
+      const x = pad.axes[axisPairs[i][0]] || 0;
+      const y = pad.axes[axisPairs[i][1]] || 0;
+      const absX = Math.abs(x);
+      const absY = Math.abs(y);
+
+      if (absX >= absY && absX > bestStrength) {
+        bestStrength = absX;
+        bestDirection = x < 0 ? "left" : "right";
+      } else if (absY > bestStrength) {
+        bestStrength = absY;
+        bestDirection = y < 0 ? "up" : "down";
+      }
+    }
+
+    return bestDirection;
+  }
+
+  function hatAxisDirection(pad) {
+    if (!pad || !pad.axes) return null;
+
+    for (let i = 0; i < pad.axes.length; i++) {
+      const v = pad.axes[i];
+
+      // Common generic USB D-pad hat values:
+      // -1 up, -0.71 up/right, -0.43 right, -0.14 down/right,
+      //  0.14 down, 0.43 down/left, 0.71 left, 1 up/left.
+      // Some controllers report neutral as 0, 1, or 3.28; skip ambiguous edges.
+      if (Math.abs(v) < 0.08 || v > 1.05 || v < -1.05 || v > 0.92) continue;
+
+      if (v <= -0.57) return "up";
+      if (v <= -0.28) return "right";
+      if (v <= 0.28) return "down";
+      if (v <= 0.57) return "left";
+      if (v <= 0.92) return "left";
+    }
+
+    return null;
   }
 
   function gamepadIsFullyReleased(pad) {
-    return !anyGamepadButtonPressed(pad) && !anyGamepadAxisActive(pad);
+    return !anyGamepadButtonPressed(pad) && !getGamepadDirection(pad, GAMEPAD_AXIS_RELEASE_ZONE);
   }
 
-  function getGamepadDirection(pad) {
-    const dead = 0.35;
+  function controllerBootCanUnlock(pad) {
+    const elapsed = performance.now() - controllerBootStartedAt;
 
+    if (elapsed < 450) return false;
+    if (gamepadIsFullyReleased(pad)) return true;
+
+    // Arcade encoder boards can report a non-neutral hat/axis even when untouched.
+    // After a short grace period, button release is enough to clear the launcher carryover.
+    if (elapsed > 1600 && !anyGamepadButtonPressed(pad)) return true;
+
+    // Last-resort escape so one strange axis cannot disable the cabinet controls.
+    return elapsed > 3200;
+  }
+
+  function getGamepadDirection(pad, deadzone) {
+    const dead = deadzone || GAMEPAD_AXIS_DEADZONE;
     // Standard browser mapping:
     // left stick axes 0/1, D-pad buttons 12/13/14/15
     const dpadUp = buttonPressed(pad, [12]);
@@ -2812,50 +2893,15 @@
     if (dpadLeft) return "left";
     if (dpadRight) return "right";
 
-    // Analog sticks and some generic USB controllers.
-    // Check common axis pairs: 0/1, 2/3, 4/5, 6/7.
-    const axisPairs = [
-      [0, 1],
-      [2, 3],
-      [4, 5],
-      [6, 7]
-    ];
+    return strongestStickDirection(pad, dead) || hatAxisDirection(pad);
+  }
 
-    for (let i = 0; i < axisPairs.length; i++) {
-      const x = pad.axes[axisPairs[i][0]] || 0;
-      const y = pad.axes[axisPairs[i][1]] || 0;
-
-      if (Math.abs(x) > Math.abs(y)) {
-        if (x < -dead) return "left";
-        if (x > dead) return "right";
-      } else {
-        if (y < -dead) return "up";
-        if (y > dead) return "down";
-      }
-    }
-
-    // Some SNES-style USB controllers report the D-pad as a single hat axis.
-    // We only treat values that are clearly away from neutral as a hat reading.
-    // Typical hat values are around:
-    // -1 up, -0.71 up/right, -0.43 right, -0.14 down/right,
-    //  0.14 down, 0.43 down/left, 0.71 left, 1 up/left
-    // Neutral on many controllers is exactly 0, so we must NOT treat near-zero as "down".
-    for (let i = 0; i < pad.axes.length; i++) {
-      const v = pad.axes[i];
-
-      // Ignore likely neutral axes.
-      if (Math.abs(v) < 0.08) continue;
-
-      if (v <= -0.90) return "up";
-      if (v > -0.90 && v <= -0.57) return "up";
-      if (v > -0.57 && v <= -0.28) return "right";
-      if (v > -0.28 && v <= 0.28) return "down";
-      if (v > 0.28 && v <= 0.57) return "left";
-      if (v > 0.57 && v <= 0.90) return "up";
-      if (v > 0.90) return "up";
-    }
-
-    return null;
+  function resetControllerLocks() {
+    menuMoveLock = false;
+    menuSelectLock = false;
+    pauseLock = false;
+    pauseMoveLock = false;
+    pauseSelectLock = false;
   }
 
   function getTitleMenuOptions() {
@@ -2956,6 +3002,24 @@
     }
   }
 
+  function isMenuConfirmKey(key) {
+    return key === " " ||
+      key === "enter" ||
+      key === "z" ||
+      key === "x" ||
+      key === "j" ||
+      key === "k" ||
+      key === "control" ||
+      key === "alt" ||
+      key === "1";
+  }
+
+  function isPauseToggleKey(key) {
+    return key === "p" ||
+      key === "shift" ||
+      key === "1";
+  }
+
   function pollGamepad() {
     const pad = getActiveGamepad();
 
@@ -2967,18 +3031,11 @@
     gamepadStatus = "GAMEPAD OK: " + (pad.id ? pad.id.substring(0, 23) : "CONNECTED");
 
     if (controllerBootLocked) {
-      const minimumLockMs = 450;
-      const minimumTimePassed = performance.now() - controllerBootStartedAt > minimumLockMs;
-
-      // Unlock only after the controller has had a moment AND every button/axis is neutral.
-      // This prevents the launch button from index.html from double-selecting inside this game.
-      if (minimumTimePassed && gamepadIsFullyReleased(pad)) {
+      // This prevents the launch button from index.html from double-selecting inside this game,
+      // while still allowing arcade encoder boards whose neutral stick reports a noisy axis.
+      if (controllerBootCanUnlock(pad)) {
         controllerBootLocked = false;
-        menuMoveLock = false;
-        menuSelectLock = false;
-        pauseLock = false;
-        pauseMoveLock = false;
-        pauseSelectLock = false;
+        resetControllerLocks();
       } else {
         return;
       }
@@ -2987,7 +3044,9 @@
     const direction = getGamepadDirection(pad);
     const hasDirection = !!direction;
 
-    const selectPressed = buttonPressed(pad, [0, 1, 2, 3, 8, 9, 10, 11, 7]);
+    const buttonSignature = gamepadButtonSignature(pad);
+    const selectPressed = buttonPressed(pad, GAMEPAD_SELECT_BUTTONS);
+    const selectEdge = selectPressed && buttonSignature !== lastGamepadSignature;
 
     if (isAnyMenuOpen()) {
       if (gameState === "start" && (hasDirection || selectPressed)) {
@@ -3001,19 +3060,20 @@
 
       if (!hasDirection) menuMoveLock = false;
 
-      if (selectPressed && !menuSelectLock) {
+      if (selectPressed && !menuSelectLock && selectEdge) {
         menuSelectLock = true;
         activateCurrentMenuItem();
       }
 
       if (!selectPressed) menuSelectLock = false;
+      lastGamepadSignature = buttonSignature;
 
       return;
     }
 
     if (gameState === "paused") {
-      const pauseStartPressed = buttonPressed(pad, [8, 9, 10, 11, 7]);
-      const pauseConfirmPressed = buttonPressed(pad, [0, 1, 2, 3]);
+      const pauseStartPressed = buttonPressed(pad, GAMEPAD_START_BUTTONS);
+      const pauseConfirmPressed = buttonPressed(pad, GAMEPAD_FACE_BUTTONS);
 
       // Important: if the same Start/Select/Menu button opened the pause menu,
       // do not let it instantly select RESUME before the button is released.
@@ -3048,6 +3108,7 @@
       }
 
       if (!pauseConfirmPressed && !pauseStartPressed) pauseSelectLock = false;
+      lastGamepadSignature = buttonSignature;
 
       return;
     }
@@ -3055,7 +3116,7 @@
     if (direction) changeDirection(direction);
 
     // Pause/start mapping: Start, Select, center/menu, right trigger fallback.
-    const startPressed = buttonPressed(pad, [8, 9, 10, 11, 7]);
+    const startPressed = buttonPressed(pad, GAMEPAD_START_BUTTONS);
 
     if (startPressed && !pauseLock) {
       pauseLock = true;
@@ -3069,6 +3130,7 @@
     }
 
     if (!startPressed) pauseLock = false;
+    lastGamepadSignature = buttonSignature;
   }
 
   window.addEventListener("gamepadconnected", function (event) {
@@ -3237,7 +3299,8 @@
         return;
       }
 
-      if (key === " " || key === "enter") {
+      if (isMenuConfirmKey(key)) {
+        e.preventDefault();
         await activateCurrentMenuItem();
       }
 
@@ -3251,9 +3314,11 @@
       if (key === "r") restartCurrentLevel();
       if (key === "q" || key === "escape") quitToTitle();
 
-      if (key === " " || key === "enter") {
+      if (isMenuConfirmKey(key)) {
+        e.preventDefault();
         activatePauseSelection();
-      } else if (key === "p") {
+      } else if (isPauseToggleKey(key)) {
+        e.preventDefault();
         togglePause();
       }
 
@@ -3265,7 +3330,8 @@
     if (key === "arrowup" || key === "w") changeDirection("up");
     if (key === "arrowdown" || key === "s") changeDirection("down");
 
-    if (key === " " || key === "enter" || key === "p") {
+    if (isMenuConfirmKey(key) || isPauseToggleKey(key)) {
+      e.preventDefault();
       if (gameState === "playing" || gameState === "paused") togglePause();
     }
   });
