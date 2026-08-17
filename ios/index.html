@@ -1095,6 +1095,7 @@
 
   const canvas = document.getElementById("gameCanvas");
   const ctx = canvas.getContext("2d");
+  ctx.imageSmoothingEnabled = false;
   const isIOS = document.documentElement.classList.contains("is-ios");
 
   const rotateScreen = document.getElementById("rotateScreen");
@@ -1131,14 +1132,6 @@
 
   const W = 960;
   const H = 540;
-  const IOS_RENDER_SCALE = 0.90;
-  const renderScale = isIOS ? IOS_RENDER_SCALE : 1;
-  if (renderScale !== 1) {
-    canvas.width = Math.round(W * renderScale);
-    canvas.height = Math.round(H * renderScale);
-  }
-  ctx.setTransform(renderScale, 0, 0, renderScale, 0, 0);
-  ctx.imageSmoothingEnabled = false;
   const TILE = 30;
   const COLS = 25;
   const ROWS = 13;
@@ -1150,19 +1143,7 @@
   staticScene.height = H;
   const staticCtx = staticScene.getContext("2d");
   staticCtx.imageSmoothingEnabled = false;
-  const collectiblesLayer = document.createElement("canvas");
-  collectiblesLayer.width = W;
-  collectiblesLayer.height = H;
-  const collectiblesCtx = collectiblesLayer.getContext("2d");
-  collectiblesCtx.imageSmoothingEnabled = false;
-  const hudLayer = document.createElement("canvas");
-  hudLayer.width = W;
-  hudLayer.height = H;
-  const hudCtx = hudLayer.getContext("2d");
-  hudCtx.imageSmoothingEnabled = false;
   let staticSceneDirty = true;
-  let collectiblesLayerDirty = true;
-  let hudSignature = "";
   let renderRequested = true;
 
   function createSprite(url, priority) {
@@ -1171,7 +1152,7 @@
     image.decoding = "async";
     if ("fetchPriority" in image) image.fetchPriority = priority || "low";
     image.addEventListener("load", requestRender, { once: true });
-    image._jncSource = url;
+    image.src = url;
     return image;
   }
 
@@ -1183,23 +1164,6 @@
   const ellyFrame2 = createSprite("https://pub-e71fca55ed9c40b29b0378015d6aa2f0.r2.dev/happyhour/assets/elly%202.png", "low");
   const derekFrame1 = createSprite("https://pub-e71fca55ed9c40b29b0378015d6aa2f0.r2.dev/happyhour/assets/derek%201.png", "low");
   const derekFrame2 = createSprite("https://pub-e71fca55ed9c40b29b0378015d6aa2f0.r2.dev/happyhour/assets/derek%202.png", "low");
-
-  const characterSpriteFrames = {
-    brad: [bradFrame1, bradFrame2],
-    jordy: [jordyFrame1, jordyFrame2],
-    elly: [ellyFrame1, ellyFrame2],
-    derek: [derekFrame1, derekFrame2]
-  };
-
-  function ensureCharacterSprites(characterKey) {
-    const frames = characterSpriteFrames[characterKey] || [];
-    frames.forEach(function (image) {
-      if (!image.src && image._jncSource) {
-        if ("fetchPriority" in image) image.fetchPriority = "high";
-        image.src = image._jncSource;
-      }
-    });
-  }
 
   const characters = {
     brad: { name: "Brad", color: "#ffcc33", item: "scotch" },
@@ -1223,24 +1187,19 @@
     audio.volume = options.volume;
     audio.setAttribute("playsinline", "");
     audio.setAttribute("webkit-playsinline", "");
-    if (url) audio.src = url;
+    audio.src = url;
     return audio;
   }
 
-  const musicAudio = createGameAudio("", { loop: true, volume: 0.22, preload: "metadata" });
+  const bgmTracks = levelMusicUrls.map(function (url) {
+    return createGameAudio(url, { loop: true, volume: 0.22, preload: "none" });
+  });
+
   const chompLoop = createGameAudio("https://pub-e71fca55ed9c40b29b0378015d6aa2f0.r2.dev/happyhour/assets/chomper.mp3", { loop: true, volume: 0.34 });
-  const sfxUrls = {
-    eatGhost: "https://pub-e71fca55ed9c40b29b0378015d6aa2f0.r2.dev/happyhour/assets/ghost.mp3",
-    power: "https://pub-e71fca55ed9c40b29b0378015d6aa2f0.r2.dev/happyhour/assets/collect.mp3",
-    death: "https://pub-e71fca55ed9c40b29b0378015d6aa2f0.r2.dev/happyhour/assets/fail.mp3",
-    levelComplete: "https://pub-e71fca55ed9c40b29b0378015d6aa2f0.r2.dev/happyhour/assets/level%20complete.mp3"
-  };
-  const sfxVolumes = { eatGhost: 0.75, power: 0.75, death: 0.8, levelComplete: 0.82 };
-  const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-  const sfxBuffers = Object.create(null);
-  const sfxBufferPromises = Object.create(null);
-  const fallbackSfx = Object.create(null);
-  let sfxAudioContext = null;
+  const sfxEatGhost = createGameAudio("https://pub-e71fca55ed9c40b29b0378015d6aa2f0.r2.dev/happyhour/assets/ghost.mp3", { loop: false, volume: 0.75 });
+  const sfxPower = createGameAudio("https://pub-e71fca55ed9c40b29b0378015d6aa2f0.r2.dev/happyhour/assets/collect.mp3", { loop: false, volume: 0.75 });
+  const sfxDeath = createGameAudio("https://pub-e71fca55ed9c40b29b0378015d6aa2f0.r2.dev/happyhour/assets/fail.mp3", { loop: false, volume: 0.8 });
+  const sfxLevelComplete = createGameAudio("https://pub-e71fca55ed9c40b29b0378015d6aa2f0.r2.dev/happyhour/assets/level%20complete.mp3", { loop: false, volume: 0.82 });
 
   const levelLayouts = [
     [
@@ -1420,7 +1379,6 @@
 
   let audioUnlocked = false;
   let currentBgm = null;
-  let currentMusicUrl = "";
   let chompLoopPlaying = false;
 
   let dots = [];
@@ -1493,7 +1451,6 @@
     dots = makeGrid(false);
     powers = makeGrid(false);
     dotsLeft = 0;
-    collectiblesLayerDirty = true;
 
     for (let r = 0; r < ROWS; r++) {
       for (let c = 0; c < COLS; c++) {
@@ -1615,135 +1572,62 @@
     try { audio.pause(); } catch (err) {}
   }
 
+  function playSfx(audio) {
+    if (!audioUnlocked || !audio) return;
+    try {
+      audio.pause();
+      audio.currentTime = 0;
+      safePlay(audio);
+    } catch (err) {}
+  }
+
   function prepareAudio(audio) {
     if (!audio || audio._jncLoadStarted) return;
     audio._jncLoadStarted = true;
     try { audio.load(); } catch (err) {}
   }
 
-  function getSfxAudioContext() {
-    if (!AudioContextClass) return null;
-    if (!sfxAudioContext) {
-      try {
-        sfxAudioContext = new AudioContextClass({ latencyHint: "interactive" });
-      } catch (err) {
-        sfxAudioContext = new AudioContextClass();
-      }
-    }
-    return sfxAudioContext;
-  }
-
-  function loadSfxBuffer(name) {
-    if (!sfxUrls[name]) return Promise.resolve(null);
-    if (sfxBuffers[name]) return Promise.resolve(sfxBuffers[name]);
-    if (sfxBufferPromises[name]) return sfxBufferPromises[name];
-
-    const audioContext = getSfxAudioContext();
-    if (!audioContext || !window.fetch) return Promise.resolve(null);
-
-    sfxBufferPromises[name] = fetch(sfxUrls[name], { cache: "force-cache", mode: "cors" })
-      .then(function (response) {
-        if (!response.ok) throw new Error("SFX load failed");
-        return response.arrayBuffer();
-      })
-      .then(function (buffer) {
-        return audioContext.decodeAudioData(buffer.slice(0));
-      })
-      .then(function (decoded) {
-        sfxBuffers[name] = decoded;
-        return decoded;
-      })
-      .catch(function () { return null; });
-
-    return sfxBufferPromises[name];
-  }
-
-  function playDecodedSfx(name) {
-    const audioContext = getSfxAudioContext();
-    const buffer = sfxBuffers[name];
-    if (!audioContext || !buffer) return false;
-
-    try {
-      const source = audioContext.createBufferSource();
-      const gain = audioContext.createGain();
-      source.buffer = buffer;
-      gain.gain.value = sfxVolumes[name] || 0.75;
-      source.connect(gain);
-      gain.connect(audioContext.destination);
-      source.start(0);
-      return true;
-    } catch (err) {
-      return false;
-    }
-  }
-
-  function playFallbackSfx(name) {
-    if (!sfxUrls[name]) return;
-    if (!fallbackSfx[name]) {
-      fallbackSfx[name] = {
-        index: 0,
-        pool: [0, 1].map(function () {
-          return createGameAudio(sfxUrls[name], {
-            loop: false,
-            volume: sfxVolumes[name] || 0.75,
-            preload: "metadata"
-          });
-        })
-      };
-    }
-
-    const entry = fallbackSfx[name];
-    const sound = entry.pool[entry.index % entry.pool.length];
-    entry.index++;
-    try { sound.currentTime = 0; } catch (err) {}
-    safePlay(sound);
-  }
-
-  function playSfx(name) {
-    if (!audioUnlocked || !sfxUrls[name]) return;
-    const audioContext = getSfxAudioContext();
-    if (audioContext && audioContext.state === "suspended") {
-      audioContext.resume().catch(function () {});
-    }
-    if (playDecodedSfx(name)) return;
-    playFallbackSfx(name);
-    loadSfxBuffer(name);
-  }
-
-  function setMusicSourceForLevel(levelNumber) {
-    const url = levelMusicUrls[(levelNumber - 1) % levelMusicUrls.length];
-    if (!url || currentMusicUrl === url) return;
-    safePause(musicAudio);
-    try { musicAudio.currentTime = 0; } catch (err) {}
-    currentMusicUrl = url;
-    musicAudio.src = url;
-    try { musicAudio.load(); } catch (err) {}
+  function prepareAudioForLevel(levelNumber) {
+    if (!audioUnlocked || !bgmTracks.length) return;
+    const currentIndex = (levelNumber - 1) % bgmTracks.length;
+    const nextIndex = currentIndex + 1 < bgmTracks.length ? currentIndex + 1 : 0;
+    prepareAudio(bgmTracks[currentIndex]);
+    prepareAudio(bgmTracks[nextIndex]);
   }
 
   function unlockAudio() {
     if (audioUnlocked) return;
     audioUnlocked = true;
 
-    prepareAudio(chompLoop);
-    setMusicSourceForLevel(level);
-    const audioContext = getSfxAudioContext();
-    if (audioContext && audioContext.state === "suspended") {
-      audioContext.resume().catch(function () {});
-    }
-    Object.keys(sfxUrls).forEach(loadSfxBuffer);
+    prepareAudioForLevel(level);
+    [chompLoop, sfxEatGhost, sfxPower, sfxDeath, sfxLevelComplete].forEach(prepareAudio);
   }
 
   function stopAllMusic() {
-    safePause(musicAudio);
-    try { musicAudio.currentTime = 0; } catch (err) {}
+    bgmTracks.forEach(function (track) {
+      safePause(track);
+      try { track.currentTime = 0; } catch (err) {}
+    });
     currentBgm = null;
   }
 
   function playBgmForLevel() {
     if (!audioUnlocked) return;
-    setMusicSourceForLevel(level);
-    if (currentBgm === musicAudio && !musicAudio.paused) return;
-    currentBgm = musicAudio;
+
+    const track = bgmTracks[(level - 1) % bgmTracks.length];
+    if (!track) return;
+    prepareAudioForLevel(level);
+    if (currentBgm === track && !track.paused) return;
+
+    bgmTracks.forEach(function (bgm) {
+      if (bgm !== track) {
+        safePause(bgm);
+        try { bgm.currentTime = 0; } catch (err) {}
+      }
+    });
+
+    currentBgm = track;
+    currentBgm.volume = 0.22;
     safePlay(currentBgm);
   }
 
@@ -1753,18 +1637,6 @@
 
   function resumeBgm() {
     if (gameState === "playing" && currentBgm && audioUnlocked) safePlay(currentBgm);
-  }
-
-  function suspendSfxAudio() {
-    if (sfxAudioContext && sfxAudioContext.state === "running") {
-      sfxAudioContext.suspend().catch(function () {});
-    }
-  }
-
-  function resumeSfxAudio() {
-    if (audioUnlocked && sfxAudioContext && sfxAudioContext.state === "suspended") {
-      sfxAudioContext.resume().catch(function () {});
-    }
   }
 
   function startChompLoop() {
@@ -1800,6 +1672,7 @@
     powerTimer = 0;
     messageTimer = 115;
     waitingForFirstMove = true;
+    prepareAudioForLevel(level);
     requestRender();
   }
 
@@ -1936,7 +1809,6 @@
 
   function startGame() {
     unlockAudio();
-    ensureCharacterSprites(selectedCharacter);
     hidePauseMenu();
     startScreen.classList.add("hidden");
     selectScreen.classList.add("hidden");
@@ -2010,7 +1882,6 @@
       dots[player.r][player.c] = false;
       dotsLeft--;
       score += 10;
-      eraseCollectible(player.c, player.r);
     }
 
     if (powers[player.r] && powers[player.r][player.c]) {
@@ -2018,7 +1889,7 @@
       dotsLeft--;
       score += 50;
       powerTimer = level <= 2 ? 10.5 : 8.5;
-      playSfx("power");
+      playSfx(sfxPower);
     }
 
     if (score > highScore) {
@@ -2134,12 +2005,12 @@
       if (dist < 21) {
         if (powerTimer > 0) {
           score += 200;
-          playSfx("eatGhost");
+          playSfx(sfxEatGhost);
           enemy.deadTimer = 2.0;
           enemy.moving = false;
         } else {
           stopChompLoop();
-          playSfx("death");
+          playSfx(sfxDeath);
           lives--;
           if (lives <= 0) {
             endGame(false);
@@ -2176,7 +2047,7 @@
 
     if (dotsLeft <= 0) {
       stopChompLoop();
-      playSfx("levelComplete");
+      playSfx(sfxLevelComplete);
 
       if (level >= 8) {
         endGame(true);
@@ -2208,10 +2079,11 @@
 
   function draw() {
     drawStaticScene();
+    drawHeader();
     drawCollectibles();
     drawEnemies();
     drawPlayer();
-    drawHud();
+    drawFooter();
 
     if ((messageTimer > 0 || waitingForFirstMove) && gameState === "playing") drawLevelMessage();
     // Pause menu is handled by HTML overlay.
@@ -2226,17 +2098,6 @@
       staticSceneDirty = false;
     }
     ctx.drawImage(staticScene, 0, 0);
-  }
-
-  function drawHud() {
-    const signature = [score, highScore, lives, dotsLeft, level, selectedCharacter, powerTimer > 0 ? 1 : 0].join("|");
-    if (signature !== hudSignature) {
-      hudSignature = signature;
-      hudCtx.clearRect(0, 0, W, H);
-      drawHeader(hudCtx);
-      drawFooter(hudCtx);
-    }
-    ctx.drawImage(hudLayer, 0, 0);
   }
 
   function drawBackground(g) {
@@ -2258,54 +2119,54 @@
     g.strokeRect(22, 22, W - 44, H - 44);
   }
 
-  function drawHeader(g) {
-    g.save();
+  function drawHeader() {
+    ctx.save();
 
-    g.textAlign = "center";
-    g.fillStyle = "#ffcc33";
-    g.shadowColor = "#7327ff";
-    g.shadowBlur = 9;
-    g.font = "900 34px Arial";
-    g.fillText("JNC HAPPY HOUR", W / 2, 42);
+    ctx.textAlign = "center";
+    ctx.fillStyle = "#ffcc33";
+    ctx.shadowColor = "#7327ff";
+    ctx.shadowBlur = 9;
+    ctx.font = "900 34px Arial";
+    ctx.fillText("JNC HAPPY HOUR", W / 2, 42);
 
-    g.shadowBlur = 0;
-    g.font = "900 13px Arial";
-    g.fillStyle = "#78fbff";
-    g.fillText("RETRO ARCADE LOUNGE MAZE", W / 2, 62);
+    ctx.shadowBlur = 0;
+    ctx.font = "900 13px Arial";
+    ctx.fillStyle = "#78fbff";
+    ctx.fillText("RETRO ARCADE LOUNGE MAZE", W / 2, 62);
 
-    g.font = "900 18px Arial";
-    g.fillStyle = "#ffffff";
-    g.textAlign = "left";
-    g.fillText("SCORE " + score, 36, 60);
+    ctx.font = "900 18px Arial";
+    ctx.fillStyle = "#ffffff";
+    ctx.textAlign = "left";
+    ctx.fillText("SCORE " + score, 36, 60);
 
-    g.textAlign = "right";
-    g.fillText("HIGH " + highScore, W - 130, 60);
+    ctx.textAlign = "right";
+    ctx.fillText("HIGH " + highScore, W - 130, 60);
 
-    g.restore();
+    ctx.restore();
   }
 
-  function drawFooter(g) {
-    g.save();
+  function drawFooter() {
+    ctx.save();
 
-    g.textAlign = "left";
-    g.fillStyle = "#ffffff";
-    g.font = "900 18px Arial";
-    g.fillText("LIVES", 36, 516);
+    ctx.textAlign = "left";
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "900 18px Arial";
+    ctx.fillText("LIVES", 36, 516);
 
     for (let i = 0; i < lives; i++) {
-      drawMiniChomper(112 + i * 30, 510, g);
+      drawMiniChomper(112 + i * 30, 510);
     }
 
-    g.textAlign = "center";
-    g.fillStyle = powerTimer > 0 ? "#ffcc33" : "#78fbff";
-    g.font = "900 18px Arial";
-    g.fillText(powerTimer > 0 ? "POWER SHOT!" : characters[selectedCharacter].name + "  •  LEVEL " + level + "/8", W / 2, 516);
+    ctx.textAlign = "center";
+    ctx.fillStyle = powerTimer > 0 ? "#ffcc33" : "#78fbff";
+    ctx.font = "900 18px Arial";
+    ctx.fillText(powerTimer > 0 ? "POWER SHOT!" : characters[selectedCharacter].name + "  •  LEVEL " + level + "/8", W / 2, 516);
 
-    g.textAlign = "right";
-    g.fillStyle = "#ffffff";
-    g.fillText("DOTS " + dotsLeft, W - 36, 516);
+    ctx.textAlign = "right";
+    ctx.fillStyle = "#ffffff";
+    ctx.fillText("DOTS " + dotsLeft, W - 36, 516);
 
-    g.restore();
+    ctx.restore();
   }
 
   function drawMaze(g) {
@@ -2340,157 +2201,131 @@
   function drawCollectibles() {
     if (!dots.length || !powers.length) return;
 
-    if (collectiblesLayerDirty) {
-      collectiblesCtx.clearRect(0, 0, W, H);
-      const sprite = getCollectibleSprite(selectedCharacter);
-      const half = COLLECTIBLE_SPRITE_SIZE / 2;
-      for (let r = 0; r < ROWS; r++) {
-        for (let c = 0; c < COLS; c++) {
-          if (!dots[r] || !dots[r][c]) continue;
-          collectiblesCtx.drawImage(sprite, tileX(c) - half, tileY(r) - half);
-        }
-      }
-      collectiblesLayerDirty = false;
-    }
-
-    ctx.drawImage(collectiblesLayer, 0, 0);
-
     for (let r = 0; r < ROWS; r++) {
       for (let c = 0; c < COLS; c++) {
-        if (powers[r] && powers[r][c]) drawPowerShot(tileX(c), tileY(r));
+        const x = tileX(c);
+        const y = tileY(r);
+
+        if (powers[r] && powers[r][c]) drawPowerShot(x, y);
+        else if (dots[r] && dots[r][c]) drawCollectible(x, y);
       }
     }
   }
 
-  const COLLECTIBLE_SPRITE_SIZE = 56;
-  const collectibleSpriteCache = Object.create(null);
+  function drawCollectible(x, y) {
+    const item = characters[selectedCharacter].item;
 
-  function eraseCollectible(c, r) {
-    if (collectiblesLayerDirty) return;
-    const spriteHalf = COLLECTIBLE_SPRITE_SIZE / 2;
-    const damageHalf = spriteHalf + 1;
-    const damageX = tileX(c) - damageHalf;
-    const damageY = tileY(r) - damageHalf;
-    const damageSize = damageHalf * 2;
-    const sprite = getCollectibleSprite(selectedCharacter);
-
-    collectiblesCtx.save();
-    collectiblesCtx.clearRect(damageX, damageY, damageSize, damageSize);
-    collectiblesCtx.beginPath();
-    collectiblesCtx.rect(damageX, damageY, damageSize, damageSize);
-    collectiblesCtx.clip();
-
-    // Cocktail sprites are wider than one maze tile. Restore only the pieces of
-    // neighboring, still-active cocktails that shared the erased rectangle.
-    for (let neighborR = Math.max(0, r - 2); neighborR <= Math.min(ROWS - 1, r + 2); neighborR++) {
-      for (let neighborC = Math.max(0, c - 2); neighborC <= Math.min(COLS - 1, c + 2); neighborC++) {
-        if (!dots[neighborR] || !dots[neighborR][neighborC]) continue;
-        collectiblesCtx.drawImage(
-          sprite,
-          tileX(neighborC) - spriteHalf,
-          tileY(neighborR) - spriteHalf
-        );
-      }
-    }
-
-    collectiblesCtx.restore();
-  }
-
-  function getCollectibleSprite(characterKey) {
-    if (collectibleSpriteCache[characterKey]) return collectibleSpriteCache[characterKey];
-    const character = characters[characterKey];
-    const sprite = document.createElement("canvas");
-    sprite.width = COLLECTIBLE_SPRITE_SIZE;
-    sprite.height = COLLECTIBLE_SPRITE_SIZE;
-    const spriteCtx = sprite.getContext("2d");
-    spriteCtx.imageSmoothingEnabled = false;
-    paintCollectible(spriteCtx, COLLECTIBLE_SPRITE_SIZE / 2, COLLECTIBLE_SPRITE_SIZE / 2, character.item, character.color);
-    collectibleSpriteCache[characterKey] = sprite;
-    return sprite;
-  }
-
-  function paintCollectible(g, x, y, item, glowColor) {
-    g.save();
-    g.shadowColor = glowColor;
-    g.shadowBlur = 6;
+    ctx.save();
+    ctx.shadowColor = characters[selectedCharacter].color;
+    ctx.shadowBlur = 6;
 
     if (item === "scotch") {
-      g.fillStyle = "#d47a28";
-      g.fillRect(x - 5, y - 1, 10, 8);
-      g.strokeStyle = "#fff";
-      g.lineWidth = 2;
-      g.strokeRect(x - 7, y - 8, 14, 17);
+      ctx.fillStyle = "#d47a28";
+      ctx.fillRect(x - 5, y - 1, 10, 8);
+      ctx.strokeStyle = "#fff";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(x - 7, y - 8, 14, 17);
     }
 
     if (item === "espresso") {
-      g.strokeStyle = "#fff";
-      g.lineWidth = 2;
-      g.beginPath();
-      g.moveTo(x, y + 9);
-      g.lineTo(x - 10, y - 7);
-      g.lineTo(x + 10, y - 7);
-      g.closePath();
-      g.stroke();
-      g.fillStyle = "#5c3016";
-      g.beginPath();
-      g.arc(x, y - 2, 5, 0, Math.PI * 2);
-      g.fill();
+      ctx.strokeStyle = "#fff";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(x, y + 9);
+      ctx.lineTo(x - 10, y - 7);
+      ctx.lineTo(x + 10, y - 7);
+      ctx.closePath();
+      ctx.stroke();
+      ctx.fillStyle = "#5c3016";
+      ctx.beginPath();
+      ctx.arc(x, y - 2, 5, 0, Math.PI * 2);
+      ctx.fill();
     }
 
     if (item === "beer") {
-      g.fillStyle = "#f5b642";
-      g.fillRect(x - 7, y - 4, 12, 12);
-      g.fillStyle = "#fff6d5";
-      g.fillRect(x - 7, y - 9, 12, 5);
-      g.beginPath();
-      g.arc(x - 6, y - 9, 3, 0, Math.PI * 2);
-      g.arc(x - 1, y - 10, 3, 0, Math.PI * 2);
-      g.arc(x + 4, y - 9, 3, 0, Math.PI * 2);
-      g.fill();
-      g.strokeStyle = "#ffffff";
-      g.lineWidth = 2;
-      g.strokeRect(x - 8, y - 9, 14, 18);
-      g.beginPath();
-      g.arc(x + 8, y, 5, -Math.PI / 2, Math.PI / 2);
-      g.stroke();
+      // Tiny frosty beer mug.
+      ctx.fillStyle = "#f5b642";
+      ctx.fillRect(x - 7, y - 4, 12, 12);
+
+      ctx.fillStyle = "#fff6d5";
+      ctx.fillRect(x - 7, y - 9, 12, 5);
+      ctx.beginPath();
+      ctx.arc(x - 6, y - 9, 3, 0, Math.PI * 2);
+      ctx.arc(x - 1, y - 10, 3, 0, Math.PI * 2);
+      ctx.arc(x + 4, y - 9, 3, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.strokeStyle = "#ffffff";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(x - 8, y - 9, 14, 18);
+
+      ctx.beginPath();
+      ctx.arc(x + 8, y, 5, -Math.PI / 2, Math.PI / 2);
+      ctx.stroke();
     }
 
     if (item === "tropical") {
-      g.strokeStyle = "#ffffff";
-      g.lineWidth = 2;
-      g.beginPath();
-      g.moveTo(x - 9, y - 6);
-      g.lineTo(x + 9, y - 6);
-      g.lineTo(x + 4, y + 10);
-      g.lineTo(x - 4, y + 10);
-      g.closePath();
-      g.stroke();
-      g.fillStyle = "#ff7a1a";
-      g.beginPath();
-      g.moveTo(x - 7, y - 4);
-      g.lineTo(x + 7, y - 4);
-      g.lineTo(x + 3, y + 8);
-      g.lineTo(x - 3, y + 8);
-      g.closePath();
-      g.fill();
-      g.strokeStyle = "#ffcc33";
-      g.lineWidth = 2;
-      g.beginPath();
-      g.moveTo(x + 3, y - 7);
-      g.lineTo(x + 8, y - 17);
-      g.stroke();
-      g.fillStyle = "#ff4bd8";
-      g.beginPath();
-      g.moveTo(x + 8, y - 17);
-      g.lineTo(x + 18, y - 14);
-      g.lineTo(x + 10, y - 10);
-      g.closePath();
-      g.fill();
-      g.fillStyle = "#39ff72";
-      g.fillRect(x - 2, y - 10, 4, 3);
+      // Tiny tropical drink with umbrella.
+      ctx.strokeStyle = "#ffffff";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(x - 9, y - 6);
+      ctx.lineTo(x + 9, y - 6);
+      ctx.lineTo(x + 4, y + 10);
+      ctx.lineTo(x - 4, y + 10);
+      ctx.closePath();
+      ctx.stroke();
+
+      ctx.fillStyle = "#ff7a1a";
+      ctx.beginPath();
+      ctx.moveTo(x - 7, y - 4);
+      ctx.lineTo(x + 7, y - 4);
+      ctx.lineTo(x + 3, y + 8);
+      ctx.lineTo(x - 3, y + 8);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.strokeStyle = "#ffcc33";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(x + 3, y - 7);
+      ctx.lineTo(x + 8, y - 17);
+      ctx.stroke();
+
+      ctx.fillStyle = "#ff4bd8";
+      ctx.beginPath();
+      ctx.moveTo(x + 8, y - 17);
+      ctx.lineTo(x + 18, y - 14);
+      ctx.lineTo(x + 10, y - 10);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.fillStyle = "#39ff72";
+      ctx.fillRect(x - 2, y - 10, 4, 3);
     }
 
-    g.restore();
+    if (item === "strawberry") {
+      ctx.fillStyle = "#ff3347";
+      ctx.beginPath();
+      ctx.moveTo(x, y + 10);
+      ctx.bezierCurveTo(x - 11, y, x - 8, y - 10, x, y - 5);
+      ctx.bezierCurveTo(x + 8, y - 10, x + 11, y, x, y + 10);
+      ctx.fill();
+      ctx.fillStyle = "#6dff77";
+      ctx.fillRect(x - 5, y - 12, 10, 5);
+    }
+
+    if (item === "shaker") {
+      ctx.fillStyle = "#bffaff";
+      ctx.fillRect(x - 7, y - 7, 14, 16);
+      ctx.fillStyle = "#fff";
+      ctx.fillRect(x - 4, y - 14, 8, 7);
+      ctx.strokeStyle = "#fff";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(x - 7, y - 7, 14, 16);
+    }
+
+    ctx.restore();
   }
 
   function drawPowerShot(x, y) {
@@ -2498,7 +2333,7 @@
 
     ctx.save();
     ctx.shadowColor = "#ffcc33";
-    ctx.shadowBlur = isIOS ? 4 : 18;
+    ctx.shadowBlur = 18;
 
     ctx.fillStyle = "#fff3a8";
     ctx.beginPath();
@@ -2569,7 +2404,7 @@
     ctx.restore();
   }
 
-  function drawFallbackChomper(x, y, color, dir, radius, isMoving = true, g = ctx) {
+  function drawFallbackChomper(x, y, color, dir, radius, isMoving = true) {
     let angle = 0;
     if (dir === "left") angle = Math.PI;
     if (dir === "up") angle = -Math.PI / 2;
@@ -2579,23 +2414,23 @@
       ? (.28 + Math.abs(Math.sin(frame * .22)) * .55)
       : .28;
 
-    g.save();
-    g.translate(x, y);
-    g.rotate(angle);
-    g.fillStyle = color;
-    g.shadowColor = color;
-    g.shadowBlur = isIOS ? 4 : 13;
-    g.beginPath();
-    g.moveTo(0, 0);
-    g.arc(0, 0, radius, mouth, Math.PI * 2 - mouth);
-    g.closePath();
-    g.fill();
-    g.shadowBlur = 0;
-    g.fillStyle = "#000";
-    g.beginPath();
-    g.arc(4, -7, 2, 0, Math.PI * 2);
-    g.fill();
-    g.restore();
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(angle);
+    ctx.fillStyle = color;
+    ctx.shadowColor = color;
+    ctx.shadowBlur = 13;
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.arc(0, 0, radius, mouth, Math.PI * 2 - mouth);
+    ctx.closePath();
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = "#000";
+    ctx.beginPath();
+    ctx.arc(4, -7, 2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
   }
 
   function drawAccessory(x, y) {
@@ -2667,7 +2502,7 @@
     ctx.translate(enemy.x, enemy.y + Math.sin(enemy.wobble) * 2.2);
     ctx.fillStyle = enemyColor(enemy);
     ctx.shadowColor = enemyColor(enemy);
-    ctx.shadowBlur = isIOS ? 4 : 13;
+    ctx.shadowBlur = 13;
     ctx.beginPath();
     ctx.arc(-10, 0, 10, 0, Math.PI * 2);
     ctx.arc(2, -8, 14, 0, Math.PI * 2);
@@ -2685,7 +2520,7 @@
     ctx.rotate(enemy.wobble * .035);
     ctx.fillStyle = enemyColor(enemy);
     ctx.shadowColor = enemyColor(enemy);
-    ctx.shadowBlur = isIOS ? 4 : 13;
+    ctx.shadowBlur = 13;
     ctx.beginPath();
     ctx.arc(0, -7, 15, 0, Math.PI * 2);
     ctx.fillRect(-10, 4, 20, 16);
@@ -2700,7 +2535,7 @@
     ctx.translate(enemy.x, enemy.y);
     ctx.fillStyle = enemyColor(enemy);
     ctx.shadowColor = enemyColor(enemy);
-    ctx.shadowBlur = isIOS ? 4 : 13;
+    ctx.shadowBlur = 13;
     ctx.beginPath();
     ctx.moveTo(0, -19);
     ctx.lineTo(17, -4);
@@ -2754,8 +2589,8 @@
     ctx.restore();
   }
 
-  function drawMiniChomper(x, y, g = ctx) {
-    drawFallbackChomper(x, y, characters[selectedCharacter].color, "right", 12, true, g);
+  function drawMiniChomper(x, y) {
+    drawFallbackChomper(x, y, characters[selectedCharacter].color, "right", 12);
   }
 
   function drawLevelMessage() {
@@ -2929,6 +2764,8 @@
   }
 
   function buttonPressed(pad, indexes) {
+    if (!pad || !pad.buttons) return false;
+
     for (let i = 0; i < indexes.length; i++) {
       const button = pad.buttons[indexes[i]];
       if (button && (button.pressed || button.value > 0.5)) return true;
@@ -2936,6 +2773,12 @@
 
     return false;
   }
+
+  const GAMEPAD_AXIS_DEADZONE = 0.35;
+  const GAMEPAD_AXIS_RELEASE_ZONE = 0.28;
+  const GAMEPAD_FACE_BUTTONS = [0, 1, 2, 3];
+  const GAMEPAD_START_BUTTONS = [8, 9, 10, 11, 7];
+  const GAMEPAD_SELECT_BUTTONS = [0, 1, 2, 3, 8, 9, 10, 11, 7];
 
   function anyGamepadButtonPressed(pad) {
     if (!pad || !pad.buttons) return false;
@@ -2948,23 +2791,65 @@
     return false;
   }
 
-  function anyGamepadAxisActive(pad) {
+  function strongestStickDirection(pad, deadzone) {
     if (!pad || !pad.axes) return false;
 
-    for (let i = 0; i < pad.axes.length; i++) {
-      if (Math.abs(pad.axes[i] || 0) > 0.35) return true;
+    const axisPairs = [
+      [0, 1],
+      [2, 3],
+      [4, 5],
+      [6, 7]
+    ];
+
+    let bestDirection = null;
+    let bestStrength = deadzone;
+
+    for (let i = 0; i < axisPairs.length; i++) {
+      const x = pad.axes[axisPairs[i][0]] || 0;
+      const y = pad.axes[axisPairs[i][1]] || 0;
+      const absX = Math.abs(x);
+      const absY = Math.abs(y);
+
+      if (absX >= absY && absX > bestStrength) {
+        bestStrength = absX;
+        bestDirection = x < 0 ? "left" : "right";
+      } else if (absY > bestStrength) {
+        bestStrength = absY;
+        bestDirection = y < 0 ? "up" : "down";
+      }
     }
 
-    return false;
+    return bestDirection;
+  }
+
+  function hatAxisDirection(pad) {
+    if (!pad || !pad.axes) return null;
+
+    for (let i = 0; i < pad.axes.length; i++) {
+      const v = pad.axes[i];
+
+      // Common generic USB D-pad hat values:
+      // -1 up, -0.71 up/right, -0.43 right, -0.14 down/right,
+      //  0.14 down, 0.43 down/left, 0.71 left, 1 up/left.
+      // Some controllers report neutral as 0, 1, or 3.28; skip ambiguous edges.
+      if (Math.abs(v) < 0.08 || v > 1.05 || v < -1.05 || v > 0.92) continue;
+
+      if (v <= -0.57) return "up";
+      if (v <= -0.28) return "right";
+      if (v <= 0.28) return "down";
+      if (v <= 0.57) return "left";
+      if (v <= 0.92) return "left";
+    }
+
+    return null;
   }
 
   function gamepadIsFullyReleased(pad) {
-    return !anyGamepadButtonPressed(pad) && !anyGamepadAxisActive(pad);
+    return !anyGamepadButtonPressed(pad) && !getGamepadDirection(pad, GAMEPAD_AXIS_RELEASE_ZONE);
   }
 
-  function getGamepadDirection(pad) {
-    const dead = 0.35;
-
+  function getGamepadDirection(pad, deadzone) {
+    const dead = deadzone || GAMEPAD_AXIS_DEADZONE;
     // Standard browser mapping:
     // left stick axes 0/1, D-pad buttons 12/13/14/15
     const dpadUp = buttonPressed(pad, [12]);
@@ -2977,50 +2862,15 @@
     if (dpadLeft) return "left";
     if (dpadRight) return "right";
 
-    // Analog sticks and some generic USB controllers.
-    // Check common axis pairs: 0/1, 2/3, 4/5, 6/7.
-    const axisPairs = [
-      [0, 1],
-      [2, 3],
-      [4, 5],
-      [6, 7]
-    ];
+    return strongestStickDirection(pad, dead) || hatAxisDirection(pad);
+  }
 
-    for (let i = 0; i < axisPairs.length; i++) {
-      const x = pad.axes[axisPairs[i][0]] || 0;
-      const y = pad.axes[axisPairs[i][1]] || 0;
-
-      if (Math.abs(x) > Math.abs(y)) {
-        if (x < -dead) return "left";
-        if (x > dead) return "right";
-      } else {
-        if (y < -dead) return "up";
-        if (y > dead) return "down";
-      }
-    }
-
-    // Some SNES-style USB controllers report the D-pad as a single hat axis.
-    // We only treat values that are clearly away from neutral as a hat reading.
-    // Typical hat values are around:
-    // -1 up, -0.71 up/right, -0.43 right, -0.14 down/right,
-    //  0.14 down, 0.43 down/left, 0.71 left, 1 up/left
-    // Neutral on many controllers is exactly 0, so we must NOT treat near-zero as "down".
-    for (let i = 0; i < pad.axes.length; i++) {
-      const v = pad.axes[i];
-
-      // Ignore likely neutral axes.
-      if (Math.abs(v) < 0.08) continue;
-
-      if (v <= -0.90) return "up";
-      if (v > -0.90 && v <= -0.57) return "up";
-      if (v > -0.57 && v <= -0.28) return "right";
-      if (v > -0.28 && v <= 0.28) return "down";
-      if (v > 0.28 && v <= 0.57) return "left";
-      if (v > 0.57 && v <= 0.90) return "up";
-      if (v > 0.90) return "up";
-    }
-
-    return null;
+  function resetControllerLocks() {
+    menuMoveLock = false;
+    menuSelectLock = false;
+    pauseLock = false;
+    pauseMoveLock = false;
+    pauseSelectLock = false;
   }
 
   function getTitleMenuOptions() {
@@ -3083,7 +2933,6 @@
 
   function showSwipeInstructions() {
     unlockAudio();
-    ensureCharacterSprites(selectedCharacter);
     errorBox.style.display = "none";
     startScreen.classList.add("hidden");
     selectScreen.classList.add("hidden");
@@ -3140,11 +2989,7 @@
       // This prevents the launch button from index.html from double-selecting inside this game.
       if (minimumTimePassed && gamepadIsFullyReleased(pad)) {
         controllerBootLocked = false;
-        menuMoveLock = false;
-        menuSelectLock = false;
-        pauseLock = false;
-        pauseMoveLock = false;
-        pauseSelectLock = false;
+        resetControllerLocks();
       } else {
         return;
       }
@@ -3153,7 +2998,7 @@
     const direction = getGamepadDirection(pad);
     const hasDirection = !!direction;
 
-    const selectPressed = buttonPressed(pad, [0, 1, 2, 3, 8, 9, 10, 11, 7]);
+    const selectPressed = buttonPressed(pad, GAMEPAD_SELECT_BUTTONS);
 
     if (isAnyMenuOpen()) {
       if (gameState === "start" && (hasDirection || selectPressed)) {
@@ -3178,8 +3023,8 @@
     }
 
     if (gameState === "paused") {
-      const pauseStartPressed = buttonPressed(pad, [8, 9, 10, 11, 7]);
-      const pauseConfirmPressed = buttonPressed(pad, [0, 1, 2, 3]);
+      const pauseStartPressed = buttonPressed(pad, GAMEPAD_START_BUTTONS);
+      const pauseConfirmPressed = buttonPressed(pad, GAMEPAD_FACE_BUTTONS);
 
       // Important: if the same Start/Select/Menu button opened the pause menu,
       // do not let it instantly select RESUME before the button is released.
@@ -3221,7 +3066,7 @@
     if (direction) changeDirection(direction);
 
     // Pause/start mapping: Start, Select, center/menu, right trigger fallback.
-    const startPressed = buttonPressed(pad, [8, 9, 10, 11, 7]);
+    const startPressed = buttonPressed(pad, GAMEPAD_START_BUTTONS);
 
     if (startPressed && !pauseLock) {
       pauseLock = true;
@@ -3337,18 +3182,13 @@
 
   document.addEventListener("visibilitychange", function () {
     if (document.hidden) {
-      resetSwipeInput();
-      cancelGameFrame();
       stopChompLoop();
       pauseBgm();
-      suspendSfxAudio();
       persistHighScore();
     } else {
       lastTime = performance.now();
       requestRender();
-      scheduleGameFrame();
       setTimeout(handlePostRotateMaybeFullscreen, 120);
-      resumeSfxAudio();
       resumeBgm();
     }
   });
@@ -3444,6 +3284,7 @@
   let touchStartX = 0;
   let touchStartY = 0;
   let activeTouchId = null;
+  let touchHandled = false;
 
   function findTrackedTouch(touchList) {
     for (let i = 0; i < touchList.length; i++) {
@@ -3459,120 +3300,45 @@
     return true;
   }
 
-  function beginSwipeInput(identifier, clientX, clientY) {
-    activeTouchId = identifier;
-    touchStartX = clientX;
-    touchStartY = clientY;
-  }
+  canvas.addEventListener("touchstart", function (e) {
+    if (!e.changedTouches.length) return;
+    const touch = e.changedTouches[0];
+    activeTouchId = touch.identifier;
+    touchStartX = touch.clientX;
+    touchStartY = touch.clientY;
+    touchHandled = false;
+    e.preventDefault();
+  }, { passive: false });
 
-  function continueSwipeInput(identifier, clientX, clientY) {
-    if (identifier !== activeTouchId) return false;
-    if (applySwipe(clientX - touchStartX, clientY - touchStartY, 18)) {
-      // Treat the current point as a new origin so one held finger can make
-      // several turns without relying on Safari to finish the prior gesture.
-      touchStartX = clientX;
-      touchStartY = clientY;
-      return true;
+  canvas.addEventListener("touchmove", function (e) {
+    const touch = findTrackedTouch(e.touches);
+    if (!touch) return;
+    e.preventDefault();
+    if (!touchHandled) {
+      touchHandled = applySwipe(touch.clientX - touchStartX, touch.clientY - touchStartY, 18);
     }
-    return false;
-  }
+  }, { passive: false });
 
-  function resetSwipeInput() {
+  canvas.addEventListener("touchend", function (e) {
+    const touch = findTrackedTouch(e.changedTouches);
+    if (!touch) return;
+    e.preventDefault();
+    if (!touchHandled) {
+      applySwipe(touch.clientX - touchStartX, touch.clientY - touchStartY, 18);
+    }
     activeTouchId = null;
-  }
+    touchHandled = false;
+  }, { passive: false });
 
-  function finishSwipeInput(identifier, clientX, clientY) {
-    if (identifier !== activeTouchId) return false;
-    continueSwipeInput(identifier, clientX, clientY);
-    resetSwipeInput();
-    return true;
-  }
-
-  if (window.PointerEvent) {
-    canvas.addEventListener("pointerdown", function (e) {
-      if (!e.isPrimary || (e.pointerType === "mouse" && e.button !== 0)) return;
-      beginSwipeInput(e.pointerId, e.clientX, e.clientY);
-      try { canvas.setPointerCapture(e.pointerId); } catch (err) {}
-      if (e.cancelable) e.preventDefault();
-    }, { passive: false });
-
-    canvas.addEventListener("pointermove", function (e) {
-      if (e.pointerId !== activeTouchId) return;
-      if (e.cancelable) e.preventDefault();
-      continueSwipeInput(e.pointerId, e.clientX, e.clientY);
-    }, { passive: false });
-
-    canvas.addEventListener("pointerup", function (e) {
-      if (!finishSwipeInput(e.pointerId, e.clientX, e.clientY)) return;
-      if (e.cancelable) e.preventDefault();
-      try { canvas.releasePointerCapture(e.pointerId); } catch (err) {}
-    }, { passive: false });
-
-    canvas.addEventListener("pointercancel", function (e) {
-      if (e.pointerId === activeTouchId) resetSwipeInput();
-    }, { passive: true });
-
-    canvas.addEventListener("lostpointercapture", function (e) {
-      if (e.pointerId === activeTouchId) resetSwipeInput();
-    });
-  } else {
-    canvas.addEventListener("touchstart", function (e) {
-      if (!e.changedTouches.length) return;
-      const touch = e.changedTouches[0];
-      beginSwipeInput(touch.identifier, touch.clientX, touch.clientY);
-      e.preventDefault();
-    }, { passive: false });
-
-    canvas.addEventListener("touchmove", function (e) {
-      const touch = findTrackedTouch(e.touches);
-      if (!touch) return;
-      e.preventDefault();
-      continueSwipeInput(touch.identifier, touch.clientX, touch.clientY);
-    }, { passive: false });
-
-    canvas.addEventListener("touchend", function (e) {
-      const touch = findTrackedTouch(e.changedTouches);
-      if (!touch) return;
-      e.preventDefault();
-      finishSwipeInput(touch.identifier, touch.clientX, touch.clientY);
-    }, { passive: false });
-
-    canvas.addEventListener("touchcancel", resetSwipeInput, { passive: true });
-
-    // A document-level safety net covers rare Safari cases where the canvas
-    // does not receive the final event for the touch it started.
-    document.addEventListener("touchend", function (e) {
-      if (findTrackedTouch(e.changedTouches)) resetSwipeInput();
-    }, { passive: true });
-    document.addEventListener("touchcancel", resetSwipeInput, { passive: true });
-  }
-
-  window.addEventListener("blur", function () {
-    resetSwipeInput();
-  });
+  canvas.addEventListener("touchcancel", function () {
+    activeTouchId = null;
+    touchHandled = false;
+  }, { passive: true });
 
   const IOS_FRAME_INTERVAL = 1000 / 60;
-  let animationFrameId = 0;
-
-  function scheduleGameFrame() {
-    if (!animationFrameId) animationFrameId = requestAnimationFrame(loop);
-  }
-
-  function cancelGameFrame() {
-    if (!animationFrameId) return;
-    cancelAnimationFrame(animationFrameId);
-    animationFrameId = 0;
-  }
 
   function loop(time) {
-    animationFrameId = 0;
-
-    if (document.hidden) {
-      lastTime = time;
-      return;
-    }
-
-    scheduleGameFrame();
+    requestAnimationFrame(loop);
 
     if (isIOS && lastTime && time - lastTime < IOS_FRAME_INTERVAL - 1) {
       return;
@@ -3599,26 +3365,18 @@
   });
 
   window.addEventListener("pagehide", function () {
-    resetSwipeInput();
-    cancelGameFrame();
     stopChompLoop();
     pauseBgm();
-    suspendSfxAudio();
     persistHighScore();
   });
 
   window.addEventListener("pageshow", function () {
-    resetSwipeInput();
     lastTime = performance.now();
     requestRender();
-    scheduleGameFrame();
-    if (!document.hidden) {
-      resumeSfxAudio();
-      resumeBgm();
-    }
+    if (!document.hidden) resumeBgm();
   });
 
-  scheduleGameFrame();
+  requestAnimationFrame(loop);
 })();
 </script>
 </body>
