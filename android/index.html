@@ -2796,6 +2796,31 @@
     return false;
   }
 
+  function gamepadButtonOutsidePressed(pad, blockedIndexes) {
+    if (!pad || !pad.buttons) return false;
+
+    for (let i = 0; i < pad.buttons.length; i++) {
+      if (blockedIndexes.indexOf(i) !== -1) continue;
+      const button = pad.buttons[i];
+      if (button && (button.pressed || button.value > 0.5)) return true;
+    }
+
+    return false;
+  }
+
+  function gamepadSelectPressed(pad) {
+    // On arcade encoder boards, the big buttons can land on almost any index.
+    if (arcadeButtonDirection(pad)) {
+      return gamepadButtonOutsidePressed(pad, [0, 1, 2, 3]);
+    }
+
+    return anyGamepadButtonPressed(pad) || buttonPressed(pad, GAMEPAD_SELECT_BUTTONS);
+  }
+
+  function gamepadStartPressed(pad) {
+    return buttonPressed(pad, GAMEPAD_START_BUTTONS);
+  }
+
   function gamepadButtonSignature(pad) {
     if (!pad || !pad.buttons) return "";
 
@@ -2861,6 +2886,31 @@
     return null;
   }
 
+  function arcadeButtonDirection(pad) {
+    if (!pad || !pad.buttons) return null;
+
+    const id = (pad.id || "").toLowerCase();
+    const likelyArcade =
+      id.includes("arcade") ||
+      id.includes("joystick") ||
+      id.includes("dragonrise") ||
+      id.includes("xin-mo") ||
+      id.includes("zero delay") ||
+      id.includes("usb gamepad") ||
+      id.includes("generic");
+
+    if (!likelyArcade && pad.buttons.length >= 12) return null;
+
+    // A few cabinet encoders expose the stick as the first four buttons.
+    // Common orders vary, so prefer the order most often used by USB arcade boards.
+    if (buttonPressed(pad, [0])) return "up";
+    if (buttonPressed(pad, [1])) return "down";
+    if (buttonPressed(pad, [2])) return "left";
+    if (buttonPressed(pad, [3])) return "right";
+
+    return null;
+  }
+
   function gamepadIsFullyReleased(pad) {
     return !anyGamepadButtonPressed(pad) && !getGamepadDirection(pad, GAMEPAD_AXIS_RELEASE_ZONE);
   }
@@ -2893,7 +2943,7 @@
     if (dpadLeft) return "left";
     if (dpadRight) return "right";
 
-    return strongestStickDirection(pad, dead) || hatAxisDirection(pad);
+    return strongestStickDirection(pad, dead) || hatAxisDirection(pad) || arcadeButtonDirection(pad);
   }
 
   function resetControllerLocks() {
@@ -3002,22 +3052,53 @@
     }
   }
 
-  function isMenuConfirmKey(key) {
+  function getKeyboardDirection(e) {
+    const key = e.key.toLowerCase();
+    const code = (e.code || "").toLowerCase();
+
+    if (key === "arrowleft" || key === "a" || code === "numpad4") return "left";
+    if (key === "arrowright" || key === "d" || code === "numpad6") return "right";
+    if (key === "arrowup" || key === "w" || code === "numpad8") return "up";
+    if (key === "arrowdown" || key === "s" || code === "numpad2") return "down";
+
+    return null;
+  }
+
+  function isMenuConfirmKey(key, code) {
     return key === " " ||
       key === "enter" ||
       key === "z" ||
       key === "x" ||
+      key === "c" ||
+      key === "v" ||
       key === "j" ||
       key === "k" ||
       key === "control" ||
       key === "alt" ||
-      key === "1";
+      key === "1" ||
+      code === "space" ||
+      code === "enter" ||
+      code === "numpadenter" ||
+      code === "numpad1" ||
+      code === "numpad5" ||
+      code === "keyz" ||
+      code === "keyx" ||
+      code === "keyc" ||
+      code === "keyv" ||
+      code === "controlleft" ||
+      code === "controlright" ||
+      code === "altleft" ||
+      code === "altright";
   }
 
-  function isPauseToggleKey(key) {
+  function isPauseToggleKey(key, code) {
     return key === "p" ||
       key === "shift" ||
-      key === "1";
+      key === "1" ||
+      code === "digit1" ||
+      code === "numpad1" ||
+      code === "shiftleft" ||
+      code === "shiftright";
   }
 
   function pollGamepad() {
@@ -3045,7 +3126,7 @@
     const hasDirection = !!direction;
 
     const buttonSignature = gamepadButtonSignature(pad);
-    const selectPressed = buttonPressed(pad, GAMEPAD_SELECT_BUTTONS);
+    const selectPressed = gamepadSelectPressed(pad);
     const selectEdge = selectPressed && buttonSignature !== lastGamepadSignature;
 
     if (isAnyMenuOpen()) {
@@ -3072,8 +3153,8 @@
     }
 
     if (gameState === "paused") {
-      const pauseStartPressed = buttonPressed(pad, GAMEPAD_START_BUTTONS);
-      const pauseConfirmPressed = buttonPressed(pad, GAMEPAD_FACE_BUTTONS);
+      const pauseStartPressed = gamepadStartPressed(pad);
+      const pauseConfirmPressed = gamepadSelectPressed(pad) && !pauseStartPressed;
 
       // Important: if the same Start/Select/Menu button opened the pause menu,
       // do not let it instantly select RESUME before the button is released.
@@ -3116,7 +3197,7 @@
     if (direction) changeDirection(direction);
 
     // Pause/start mapping: Start, Select, center/menu, right trigger fallback.
-    const startPressed = buttonPressed(pad, GAMEPAD_START_BUTTONS);
+    const startPressed = gamepadStartPressed(pad) || gamepadSelectPressed(pad);
 
     if (startPressed && !pauseLock) {
       pauseLock = true;
@@ -3276,22 +3357,24 @@
 
   window.addEventListener("keydown", async function (e) {
     const key = e.key.toLowerCase();
+    const code = (e.code || "").toLowerCase();
+    const keyboardDirection = getKeyboardDirection(e);
 
     if (gameState === "start" || gameState === "select" || gameState === "instructions" || gameState === "ended") {
       if (gameState === "start") {
         await primeStartScreenFullscreen();
 
-        if (key === "arrowleft" || key === "a") handleMenuDirection("left");
-        if (key === "arrowright" || key === "d") handleMenuDirection("right");
-        if (key === "arrowup" || key === "w") handleMenuDirection("up");
-        if (key === "arrowdown" || key === "s") handleMenuDirection("down");
+        if (keyboardDirection) {
+          e.preventDefault();
+          handleMenuDirection(keyboardDirection);
+        }
       }
 
       if (gameState === "select") {
-        if (key === "arrowleft" || key === "a") handleMenuDirection("left");
-        if (key === "arrowright" || key === "d") handleMenuDirection("right");
-        if (key === "arrowup" || key === "w") handleMenuDirection("up");
-        if (key === "arrowdown" || key === "s") handleMenuDirection("down");
+        if (keyboardDirection) {
+          e.preventDefault();
+          handleMenuDirection(keyboardDirection);
+        }
       }
 
       if (gameState === "start" && key === "m") {
@@ -3299,7 +3382,7 @@
         return;
       }
 
-      if (isMenuConfirmKey(key)) {
+      if (isMenuConfirmKey(key, code)) {
         e.preventDefault();
         await activateCurrentMenuItem();
       }
@@ -3308,16 +3391,22 @@
     }
 
     if (gameState === "paused") {
-      if (key === "arrowup" || key === "w") updatePauseSelection(selectedPauseIndex - 1);
-      if (key === "arrowdown" || key === "s") updatePauseSelection(selectedPauseIndex + 1);
+      if (keyboardDirection === "up" || keyboardDirection === "left") {
+        e.preventDefault();
+        updatePauseSelection(selectedPauseIndex - 1);
+      }
+      if (keyboardDirection === "down" || keyboardDirection === "right") {
+        e.preventDefault();
+        updatePauseSelection(selectedPauseIndex + 1);
+      }
 
       if (key === "r") restartCurrentLevel();
       if (key === "q" || key === "escape") quitToTitle();
 
-      if (isMenuConfirmKey(key)) {
+      if (isMenuConfirmKey(key, code)) {
         e.preventDefault();
         activatePauseSelection();
-      } else if (isPauseToggleKey(key)) {
+      } else if (isPauseToggleKey(key, code)) {
         e.preventDefault();
         togglePause();
       }
@@ -3325,12 +3414,12 @@
       return;
     }
 
-    if (key === "arrowleft" || key === "a") changeDirection("left");
-    if (key === "arrowright" || key === "d") changeDirection("right");
-    if (key === "arrowup" || key === "w") changeDirection("up");
-    if (key === "arrowdown" || key === "s") changeDirection("down");
+    if (keyboardDirection) {
+      e.preventDefault();
+      changeDirection(keyboardDirection);
+    }
 
-    if (isMenuConfirmKey(key) || isPauseToggleKey(key)) {
+    if (isMenuConfirmKey(key, code) || isPauseToggleKey(key, code)) {
       e.preventDefault();
       if (gameState === "playing" || gameState === "paused") togglePause();
     }
